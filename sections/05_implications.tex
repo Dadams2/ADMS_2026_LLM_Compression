@@ -1,0 +1,76 @@
+% ============================================================
+%  Section 5: Implications
+% ============================================================
+
+\section{Implications}
+
+\begin{frame}{Where This Fits in a Database System}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Good fit}
+        \begin{itemize}
+          \item Cold or archival analytical text
+          \item Write-once, read-rarely data
+          \item Expensive storage or data movement
+          \item Highly structured text or code corpora
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \hfill
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Poor fit today}
+        \begin{itemize}
+          \item Hot query paths
+          \item High-throughput ingestion
+          \item Frequent updates
+          \item Latency-sensitive decompression
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.8em}
+  \centering
+  \small The strongest current use case is not replacing zstd; it is compressing cold text when storage reduction dominates compute cost.
+\end{frame}
+
+\begin{frame}{Design Lessons for LLM Systems}
+  \begin{enumerate}
+    \item \textbf{Expose the right data.} Compression needs score or interval access, not sampled tokens.
+
+    \vspace{0.4em}
+    \item \textbf{Keep row order stable.} The entropy coder and decoder need deterministic, row-local replay.
+
+    \vspace{0.4em}
+    \item \textbf{Move work near inference.} Target-interval capture avoids exporting dense score tensors.
+
+    \vspace{0.4em}
+    \item \textbf{Batching changes the bottleneck.} After coding is optimized, model inference becomes the next floor.
+
+    \vspace{0.4em}
+    \item \textbf{Serving metrics are incomplete.} High generation throughput does not imply high compression throughput.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Future Work}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \textbf{Model-side}
+      \begin{itemize}
+        \item Smaller or specialized compressors
+        \item Domain fine-tuning for code, logs, and records
+        \item Speculative or blockwise prediction
+      \end{itemize}
+    \end{column}
+    \hfill
+    \begin{column}{0.48\textwidth}
+      \textbf{System-side}
+      \begin{itemize}
+        \item Native interval-capture APIs
+        \item Lower-overhead stateful scheduling
+        \item Decode-aware cost models
+        \item Integration with storage-tier policies
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}

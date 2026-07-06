@@ -1,0 +1,93 @@
+% ============================================================
+%  Section 2: Background
+% ============================================================
+
+\section{Background}
+
+\begin{frame}{LLM Compression as Next-Token Prediction}
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    node distance=1.15cm and 1.15cm,
+    box/.style={draw, rounded corners=2pt, minimum width=2.15cm,
+                minimum height=0.85cm, align=center, font=\small},
+    arr/.style={-{Stealth[length=5pt]}, thick},
+  ]
+    \node[box, fill=mLightBrown!18, minimum width=1.8cm] (text) {Text\\bytes};
+    \node[box, fill=blue!12, right=of text] (tok) {Tokenizer\\$x_{1:n}$};
+    \node[box, fill=green!14, right=of tok] (model) {LLM\\logits};
+    \node[box, fill=orange!16, right=of model] (coder) {Entropy\\coder};
+    \node[box, fill=gray!16, minimum width=2.0cm, right=of coder] (bits) {Compressed\\bits};
+
+    \draw[arr] (text) -- (tok);
+    \draw[arr] (tok) -- (model);
+    \draw[arr] (model) -- node[above, font=\tiny] {$p(x_{t+1}\mid x_{\le t})$} (coder);
+    \draw[arr] (coder) -- (bits);
+  \end{tikzpicture}
+  }
+
+  \vspace{1.2em}
+  \begin{itemize}
+    \item The model supplies a distribution for the next token.
+    \item Arithmetic coding consumes roughly $-\log_2 p(x_{t+1})$ bits for the true token \parencite{rissanenArithmeticCoding1979}.
+    \item Better predictions improve compressed size, but every token requires model work.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Compression Is Not Ordinary Text Generation}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{LLM serving}
+        \begin{itemize}
+          \item Many independent requests
+          \item Scheduler can reorder work
+          \item Only sampled token usually matters
+          \item Throughput rewards high concurrency
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \hfill
+    \begin{column}{0.47\textwidth}
+      \begin{block}{LLM compression}
+        \begin{itemize}
+          \item Stateful token-by-token replay
+          \item Row order must be recoverable
+          \item Scores feed an entropy coder
+          \item Decode must reproduce exactly
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.8em}
+  \centering
+  \small Generation-optimized engines such as vLLM and SGLang target serving throughput, not necessarily score-capture workloads \parencite{kwonEfficientMemoryManagement2023,zhengSGLangEfficientExecution2024}.
+\end{frame}
+
+\begin{frame}{Global-Mask Compression}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \textbf{Compressor state}
+      \begin{itemize}
+        \item Token sequence $x_{1:n}$
+        \item Global allowed-token set $V'$
+        \item Row seeds for batched streams
+        \item Context limit $R$
+      \end{itemize}
+    \end{column}
+    \hfill
+    \begin{column}{0.48\textwidth}
+      \textbf{Per-step operation}
+      \begin{align*}
+        z_t &= M(c_t) \\
+        p_j &= \frac{\exp z_{t,j}}{\sum_{k \in V'} \exp z_{t,k}} \\
+        \ell_t &\approx -\log_2 p_{x_{t+1}}
+      \end{align*}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.4em}
+  \begin{block}{Lossless replay requirement}
+    The decoder must use the same model, tokenizer, vocabulary mask, context policy, and arithmetic-coding parameters.
+  \end{block}
+\end{frame}

@@ -1,0 +1,132 @@
+% ============================================================
+%  main.tex -- ADMS LLM Compression Slides
+%  Metropolis Beamer Presentation
+% ============================================================
+
+\documentclass[aspectratio=169, 10pt]{beamer}
+
+% ---------- Theme -------------------------------------------
+\usetheme[progressbar=frametitle, block=fill, numbering=fraction]{metropolis}
+
+% ---------- Fonts -------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{FiraSans}
+\usepackage{FiraMono}
+
+% ---------- Math --------------------------------------------
+\usepackage{amsmath, amssymb, mathtools}
+
+% ---------- TikZ / pgfplots ---------------------------------
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit,
+                backgrounds, calc, decorations.pathreplacing}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% ---------- Tables ------------------------------------------
+\usepackage{booktabs, tabularx, multirow, colortbl}
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+
+% ---------- Graphics ----------------------------------------
+\usepackage{graphicx}
+
+% ---------- Bibliography ------------------------------------
+\usepackage[backend=biber, style=authoryear-comp, maxcitenames=2,
+            uniquelist=false, uniquename=false]{biblatex}
+\addbibresource{refs.bib}
+\setbeamertemplate{bibliography item}{}
+
+% ---------- Utilities ---------------------------------------
+\usepackage{appendixnumberbeamer}
+\usepackage{hyperref}
+\definecolor{mutedCite}{RGB}{120,88,55}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=.,
+  citecolor=mutedCite,
+  urlcolor=mLightBrown
+}
+
+% Keep in-slide citations visually secondary to slide content.
+\AtEveryCite{\scriptsize}
+
+% ---------- Custom commands ---------------------------------
+\newcommand{\engine}[1]{\textbf{\textcolor{mLightBrown}{#1}}}
+\newcommand{\codec}[1]{\texttt{#1}}
+\newcommand{\metric}[1]{\textbf{\textcolor{mDarkTeal}{#1}}}
+\newcommand{\plotsdir}{../adms_paper/plots}
+
+% ---------- Metadata ----------------------------------------
+\title{High-Throughput LLM-Based Compression}
+\subtitle{Inference Engines and Entropy-Coding Optimizations}
+\author[Adams et al.]{%
+  \footnotesize
+  David Adams\inst{1} \quad
+  Luisa Neubauer\inst{2} \quad
+  Ping-Lin Kuo\inst{2} \quad
+  Mihail Stoian\inst{2}\\
+  Thomas R\"uckstie\ss\inst{3} \quad
+  Josif Grabocka\inst{2} \quad
+  Renata Borovica-Gajic\inst{1} \quad
+  Andreas Kipf\inst{2}
+}
+\institute[U Melbourne / UTN / Relaxed Constraints]{%
+  \scriptsize
+  \inst{1}The University of Melbourne
+  \and \inst{2}University of Technology Nuremberg
+  \and \inst{3}Relaxed Constraints
+}
+\date{ADMS 2026}
+
+% ============================================================
+\begin{document}
+% ============================================================
+
+\maketitle
+
+\begin{frame}{Talk Roadmap}
+  \tableofcontents
+\end{frame}
+
+\input{sections/01_motivation}
+\input{sections/02_related_work}
+\input{sections/02_background}
+\input{sections/03_system}
+\input{sections/04_results}
+\input{sections/05_implications}
+\input{sections/06_conclusion}
+
+\appendix
+
+\begin{frame}{Appendix: Experimental Setup}
+  \small
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Dimension} & \textbf{Configuration} \\
+    \midrule
+    Model & \texttt{Qwen/Qwen2.5-0.5B} \\
+    Default hardware & Dual AMD EPYC Milan 7313, 512 GB DDR4, NVIDIA A100 40 GB SXM4 \\
+    Datasets & \texttt{text8}, Python code from PyTorrent, Yelp Open Dataset records \\
+    Default operating point & Batch size 256, context length 256, 100 retained tokens \\
+    Metrics & Throughput in uncompressed MB/s; compression ratio as original/compressed size \\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}[allowframebreaks]{References}
+  \scriptsize
+  \printbibliography[heading=none]
+\end{frame}
+
+\begin{frame}[standout]
+  \Large Questions
+
+  \vspace{1.2em}
+  \normalsize
+  David Adams\\
+  \href{mailto:david.adams1@student.unimelb.edu.au}{david.adams1@student.unimelb.edu.au}
+\end{frame}
+
+% ============================================================
+\end{document}

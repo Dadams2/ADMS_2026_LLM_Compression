@@ -1,0 +1,28 @@
+% ============================================================
+%  Section 6: Conclusion
+% ============================================================
+
+\section{Conclusion}
+
+\begin{frame}{Key Takeaways}
+  \begin{enumerate}
+    \item \textbf{LLMs can compress text very well.} Ratios above $7\times$ on natural language and $11\times$ on code are possible in these experiments.
+
+    \vspace{0.45em}
+    \item \textbf{The implementation determines the economics.} For a fixed model, throughput varies dramatically with logit access and entropy-coding design.
+
+    \vspace{0.45em}
+    \item \textbf{Target-interval capture is the strongest optimization.} It turns dense score processing into a constant-size per-token record.
+
+    \vspace{0.45em}
+    \item \textbf{LLM compression is not a hot-path DB codec yet.} Today it is most plausible for cold analytical text where storage reduction outweighs compute cost.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[standout]
+  \Large Systems engineering matters as much as model quality.
+
+  \vspace{1.0em}
+  \normalsize
+  LLM-based compression becomes interesting only when inference, score capture, and entropy coding are designed together.
+\end{frame}

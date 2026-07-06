@@ -1,0 +1,47 @@
+% ============================================================
+%  Section 2: Related Work
+% ============================================================
+
+\section{Related Work}
+
+\begin{frame}{Where This Paper Sits}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \textbf{Neural compression}
+      \begin{itemize}
+        \item Neural predictors have long been combined with entropy coding \parencite{schmidhuberSequentialNeuralText1996}.
+        \item DeepZip, DecMac, DZip, and TRACE improve modeling but keep inference cost central \parencite{goyalDeepZipLosslessData2019,liuDecMacDeepContext2019,goyalDZipImprovedGeneralpurpose2021,maoTRACEFastTransformerbased2022}.
+      \end{itemize}
+    \end{column}
+    \hfill
+    \begin{column}{0.48\textwidth}
+      \textbf{LLM-based compression}
+      \begin{itemize}
+        \item LLMZip and later work show strong ratios from pretrained models \parencite{llmzip,lossless_data_compression_llm}.
+        \item Recent systems work emphasizes practicality, latency, and coding precision \parencite{finezip,tacconelliNacrithNeuralLossless2026,Kipf2026WaitingTD}.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{The Systems Gap}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Compression literature}
+        Usually asks: how good is the probability model, and how many bits does it save?
+      \end{block}
+      \small Classical references still define the codec baseline: Huffman coding, arithmetic coding, zstd, and FSST \parencite{Huffman1952AMF,rissanenArithmeticCoding1979,zstd,fsst}.
+    \end{column}
+    \hfill
+    \begin{column}{0.48\textwidth}
+      \begin{block}{LLM serving literature}
+        Usually asks: how do we maximize generation throughput under serving workloads?
+      \end{block}
+      \small vLLM and SGLang optimize high-throughput LLM serving, but not the row-stable score-capture path required by entropy coding \parencite{kwonEfficientMemoryManagement2023,zhengSGLangEfficientExecution2024}.
+    \end{column}
+  \end{columns}
+
+  \vspace{0.8em}
+  \centering
+  \small This work connects the two: model quality, engine behavior, and entropy-coder data movement.
+\end{frame}

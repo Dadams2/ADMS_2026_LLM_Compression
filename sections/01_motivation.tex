@@ -1,0 +1,71 @@
+% ============================================================
+%  Section 1: Motivation
+% ============================================================
+
+\section{Motivation}
+
+\begin{frame}{Text Is a First-Class Analytics Datatype}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Amazon Redshift fleet}
+        \centering
+        {\Huge 52.1\%}\\[0.4em]
+        \small Stored columns observed as \texttt{varchar}\\[-0.1em]
+        \scriptsize\parencite{vanrenenWhyTPCNot2024}
+      \end{block}
+    \end{column}
+    \hfill
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Snowflake workloads}
+        \centering
+        {\Huge 34\%}\\[0.4em]
+        \small Aggregation inputs reported as text columns\\[-0.1em]
+        \scriptsize\parencite{szlangWorkloadInsightsSnowflake2025}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{1.0em}
+  \begin{itemize}
+    \item Analytical systems increasingly store and process large amounts of text.
+    \item Compression already appears in production data pipelines, mostly through conventional codecs.
+    \item Cold text is attractive: it is retained, moved, and scanned, but not constantly updated.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{The Storage Codec Question}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.44\textwidth}
+      \textbf{Classical compressors}
+      \begin{itemize}
+        \item Extremely fast
+        \item Cheap CPU deployment
+        \item Moderate text compression ratios
+        \item Mature in DBMS pipelines \parencite{zstd,fsst}
+      \end{itemize}
+    \end{column}
+    \hfill
+    \begin{column}{0.50\textwidth}
+      \textbf{LLM-based compressors}
+      \begin{itemize}
+        \item Strong language priors
+        \item High compression-ratio potential \parencite{llmzip,lossless_data_compression_llm}
+        \item Require neural inference during encode and decode
+        \item Need deterministic model and coder replay
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.9em}
+  \begin{block}{Central systems question}
+    Under which combinations of inference engine, hardware platform, and entropy-coding design can LLM compression become economically viable for analytical text storage?
+  \end{block}
+\end{frame}
+
+\begin{frame}[standout]
+  \Large Compression ratio is not enough.
+
+  \vspace{1.0em}
+  \normalsize
+  A database codec has to balance storage footprint, ingestion throughput, and decode cost \parencite{Kipf2026WaitingTD}.
+\end{frame}

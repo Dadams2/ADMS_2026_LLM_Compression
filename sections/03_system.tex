@@ -1,0 +1,104 @@
+% ============================================================
+%  Section 3: System and Optimizations
+% ============================================================
+
+\section{System}
+
+\begin{frame}{System Under Study}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.31\textwidth}
+      \begin{block}{Inference engines}
+        \begin{itemize}
+          \item \engine{Transformers}
+          \item \engine{vLLM}
+          \item \engine{TensorRT-LLM}
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \hfill
+    \begin{column}{0.31\textwidth}
+      \begin{block}{Logit paths}
+        \begin{itemize}
+          \item Direct final-position logits
+          \item Shared-memory capture
+          \item Offline generation logits
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \hfill
+    \begin{column}{0.31\textwidth}
+      \begin{block}{Encodings}
+        \begin{itemize}
+          \item Arithmetic coding
+          \item Multistream AC
+          \item Target-interval AC
+          \item Rank variants
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.8em}
+  \centering
+  \small Same compressor loop and predictor interface; custom logit paths isolate engine behavior from compressor implementation differences.
+\end{frame}
+
+\begin{frame}{Three Optimizations Target Three Costs}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.31\textwidth}
+      \begin{block}{O1: vLLM windows}
+        Teacher-force multiple known target tokens in one engine call.
+
+        \vspace{0.3em}
+        \small Targets request scheduling overhead.
+      \end{block}
+    \end{column}
+    \hfill
+    \begin{column}{0.31\textwidth}
+      \begin{block}{O2: multistream AC}
+        Maintain one range coder per batch row and compile the hot update loop \parencite{Lam2015NumbaAL}.
+
+        \vspace{0.3em}
+        \small Targets Python and coder overhead.
+      \end{block}
+    \end{column}
+    \hfill
+    \begin{column}{0.31\textwidth}
+      \begin{block}{O3: target interval}
+        Return only the interval needed for the true next token.
+
+        \vspace{0.3em}
+        \small Targets score conversion and transfer.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Target-Interval Capture Changes the Data Path}
+  \centering
+  \begin{tikzpicture}[
+    box/.style={draw, rounded corners=2pt, minimum height=0.78cm,
+                align=center, font=\small},
+    arr/.style={-{Stealth[length=5pt]}, thick},
+  ]
+    \node[box, fill=red!10, minimum width=3.2cm] (dense) at (0,1.4) {Dense scores\\$B \times |V'|$ floats};
+    \node[box, fill=red!10, minimum width=3.2cm] (softmax) at (4.0,1.4) {Host softmax\\and cumulative sums};
+    \node[box, fill=red!10, minimum width=3.2cm] (ac1) at (8.0,1.4) {Interval lookup\\then AC update};
+
+    \draw[arr] (dense) -- (softmax);
+    \draw[arr] (softmax) -- (ac1);
+
+    \node[box, fill=green!12, minimum width=3.2cm] (target) at (0,-1.0) {Backend computes\\target interval};
+    \node[box, fill=green!12, minimum width=3.2cm] (record) at (4.0,-1.0) {Fixed-size record\\$(\ell,h,T,p)$};
+    \node[box, fill=green!12, minimum width=3.2cm] (ac2) at (8.0,-1.0) {Direct AC\\update};
+
+    \draw[arr] (target) -- node[above, font=\tiny] {$O(1)$ per row-step} (record);
+    \draw[arr] (record) -- (ac2);
+
+    \node[font=\small\bfseries] at (-1.6,1.4) {Before};
+    \node[font=\small\bfseries] at (-1.6,-1.0) {After};
+  \end{tikzpicture}
+
+  \vspace{0.7em}
+  \small The arithmetic coder does not need the full probability vector; it needs the quantized interval assigned to the true token.
+\end{frame}
