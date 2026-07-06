@@ -26,26 +26,10 @@
 
 \begin{frame}{The Bottleneck Moves}
   \centering
-  \begin{tikzpicture}[
-    node distance=1.15cm,
-    stage/.style={draw, rounded corners=2pt, minimum width=3.25cm,
-                  minimum height=0.85cm, align=center, font=\small},
-    arr/.style={-{Stealth[length=5pt]}, thick},
-  ]
-    \node[stage, fill=blue!12] (low) {Low batch\\inference latency};
-    \node[stage, fill=orange!16, right=of low] (mid) {Larger batch\\AC preprocessing};
-    \node[stage, fill=green!14, right=of mid] (high) {After O2/O3\\score extraction / inference};
+  \includegraphics[width=0.92\textwidth,height=0.72\textheight,keepaspectratio]{figures/tikz/bottleneck_shift.pdf}
 
-    \draw[arr] (low) -- node[above, font=\tiny] {batching} (mid);
-    \draw[arr] (mid) -- node[above, font=\tiny] {optimized coding} (high);
-  \end{tikzpicture}
-
-  \vspace{1.2em}
-  \begin{itemize}
-    \item Larger batches make GPU work more efficient, but expose arithmetic-coding cost.
-    \item O2 reduces Python and range-coder overhead.
-    \item O3 removes most probability-vector processing and transfer.
-  \end{itemize}
+  \vspace{0.3em}
+  \small Naive AC made coding the bottleneck; after optimizing it away, the floor is again inference and score extraction.
 \end{frame}
 
 \begin{frame}{Result 2: Target-Interval Capture Dominates}
@@ -66,6 +50,10 @@
     TensorRT-LLM & + O3 & \metric{0.0044} & \metric{$2.18\times$} & 0.7\% \\
     \bottomrule
   \end{tabularx}
+
+  \vspace{0.45em}
+  \centering
+  \small O3 is strongest when coding and score conversion dominate; current generation engines still leave non-coding overhead.
 \end{frame}
 
 \begin{frame}{Result 3: vLLM Needs Windowing}
@@ -77,9 +65,9 @@
     \begin{column}{0.40\textwidth}
       \textbf{Takeaway}
       \begin{itemize}
-        \item One next-token request per step pays too much fixed overhead.
-        \item Teacher forcing collects several score vectors in one call.
-        \item The benefit is largest at small-to-medium batch sizes.
+        \item One request per token pays too much fixed overhead.
+        \item O1 collects a window of score vectors per call.
+        \item Gains concentrate at small-to-medium batch sizes.
         \item Window size $w=8$ is a practical operating point.
       \end{itemize}
     \end{column}
@@ -126,7 +114,7 @@
   \end{tabularx}
 
   \vspace{0.5em}
-  \small LLM compression currently trades orders of magnitude of throughput for substantially higher compression ratio. Classical baselines include zstd and FSST \parencite{zstd,fsst}.
+  \small LLM compression trades orders of magnitude of throughput for substantially higher ratio; pure CPU neural compression with AVX-512 or similar vector extensions is a plausible systems baseline to explore.
 \end{frame}
 
 \begin{frame}{Dataset Sensitivity: Code Compresses Especially Well}

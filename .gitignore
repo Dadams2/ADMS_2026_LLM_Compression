@@ -11,3 +11,6 @@
 *.synctex.gz
 *.toc
 *.run.xml
+*.pdf
+!main.pdf
+*.png

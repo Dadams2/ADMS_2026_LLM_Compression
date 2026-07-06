@@ -1,0 +1,52 @@
+\documentclass[tikz,border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{FiraSans}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\definecolor{ceBlue}{RGB}{42,96,153}
+\definecolor{ceTeal}{RGB}{36,135,118}
+\definecolor{ceGold}{RGB}{220,160,52}
+\definecolor{ceRed}{RGB}{188,74,60}
+\definecolor{ceInk}{RGB}{42,42,42}
+\definecolor{ceGray}{RGB}{238,240,242}
+\begin{document}
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  font=\sffamily,
+  row/.style={draw=ceInk!35, rounded corners=2pt, fill=white, minimum width=1.0cm, minimum height=0.45cm, font=\tiny},
+  work/.style={draw=ceInk!45, rounded corners=2pt, align=center, font=\scriptsize, minimum height=0.72cm},
+  arr/.style={-{Stealth[length=5pt]}, thick, ceInk},
+]
+  \node[font=\Large\bfseries, ceInk] at (6.55,6.1) {Multistream AC makes batch rows independent};
+
+  \foreach \r/\y in {0/4.9,1/4.35,2/3.8,3/3.25} {
+    \node[row, fill=ceBlue!8] (p\r) at (1.0,\y) {row \r};
+    \node[row, fill=ceGold!14] (i\r) at (3.0,\y) {$(\ell,h,T)$};
+    \node[row, fill=ceTeal!12] (c\r) at (5.0,\y) {coder \r};
+    \draw[arr] (p\r) -- (i\r);
+    \draw[arr] (i\r) -- (c\r);
+  }
+  \node[work, fill=ceBlue!8, minimum width=1.6cm] at (1.0,5.55) {batch\\prompts};
+  \node[work, fill=ceGold!14, minimum width=1.8cm] at (3.0,5.55) {target\\intervals};
+  \node[work, fill=ceTeal!12, minimum width=1.8cm] at (5.0,5.55) {row-local\\streams};
+
+  \node[work, fill=ceGray, minimum width=4.1cm] (cpu) at (9.35,4.05) {Numba/packed backend\\runs hot range-coder loop};
+  \foreach \r in {0,1,2,3} {
+    \draw[arr] (c\r.east) -- (cpu.west);
+  }
+
+  \draw[ceInk!25] (0.5,2.45) -- (12.6,2.45);
+  \node[font=\bfseries, ceInk] at (1.2,1.9) {Pipeline};
+  \node[work, fill=ceBlue!10, minimum width=2.4cm] (inf0) at (3.0,1.35) {inference\\batch $k$};
+  \node[work, fill=ceGold!14, minimum width=2.4cm] (enc0) at (5.75,1.35) {encode\\batch $k$};
+  \node[work, fill=ceBlue!10, minimum width=2.4cm] (inf1) at (8.5,1.35) {inference\\batch $k+1$};
+  \node[work, fill=ceGold!14, minimum width=2.4cm] (enc1) at (11.25,1.35) {encode\\batch $k+1$};
+  \draw[arr, rounded corners=4pt]
+    (inf0.east) -- ++(0.28,0) |- ([yshift=0.34cm]inf1.north west) -- ++(0.25,0) |- (inf1.west);
+  \draw[arr, rounded corners=4pt]
+    (enc0.east) -- ++(0.28,0) |- ([yshift=-0.34cm]enc1.south west) -- ++(0.25,0) |- (enc1.west);
+  \draw[arr, ceTeal] (inf0.south east) -- node[below, font=\tiny, ceTeal] {overlap} (enc0.south west);
+  \draw[arr, ceTeal] (inf1.south east) -- (enc1.south west);
+\end{tikzpicture}
+\end{document}

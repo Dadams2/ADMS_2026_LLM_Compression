@@ -27,41 +27,39 @@
   }
 
   \vspace{1.2em}
-  \begin{itemize}
-    \item The model supplies a distribution for the next token.
-    \item Arithmetic coding consumes roughly $-\log_2 p(x_{t+1})$ bits for the true token \parencite{rissanenArithmeticCoding1979}.
-    \item Better predictions improve compressed size, but every token requires model work.
-  \end{itemize}
+  \large Better predictions reduce bits; every token still requires model replay.
+\end{frame}
+
+\begin{frame}{Arithmetic Coding: The Mechanism}
+  \centering
+  \includegraphics[width=0.92\textwidth,height=0.76\textheight,keepaspectratio]{figures/tikz/ac_interval.pdf}
+
+  \vspace{0.3em}
+  \small The coder keeps narrowing the interval assigned to the true next token; expected cost is approximately $-\log_2 p(x_{t+1})$ bits \parencite{rissanenArithmeticCoding1979}.
 \end{frame}
 
 \begin{frame}{Compression Is Not Ordinary Text Generation}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.47\textwidth}
-      \begin{block}{LLM serving}
-        \begin{itemize}
-          \item Many independent requests
-          \item Scheduler can reorder work
-          \item Only sampled token usually matters
-          \item Throughput rewards high concurrency
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \hfill
-    \begin{column}{0.47\textwidth}
-      \begin{block}{LLM compression}
-        \begin{itemize}
-          \item Stateful token-by-token replay
-          \item Row order must be recoverable
-          \item Scores feed an entropy coder
-          \item Decode must reproduce exactly
-        \end{itemize}
-      \end{block}
-    \end{column}
-  \end{columns}
+  \centering
+  \begin{tikzpicture}[
+    box/.style={draw, rounded corners=2pt, minimum width=3.3cm,
+                minimum height=0.78cm, align=center, font=\small},
+    arr/.style={-{Stealth[length=5pt]}, thick},
+  ]
+    \node[box, fill=blue!10] (serve) at (0,1.0) {serving};
+    \node[box, fill=blue!10] (sample) at (4.0,1.0) {sample token};
+    \node[box, fill=blue!10] (text) at (8.0,1.0) {return text};
+    \draw[arr] (serve) -- (sample);
+    \draw[arr] (sample) -- (text);
+
+    \node[box, fill=orange!14] (comp) at (0,-1.0) {compression};
+    \node[box, fill=orange!14] (scores) at (4.0,-1.0) {capture scores};
+    \node[box, fill=orange!14] (ac) at (8.0,-1.0) {update coder};
+    \draw[arr] (comp) -- (scores);
+    \draw[arr] (scores) -- (ac);
+  \end{tikzpicture}
 
   \vspace{0.8em}
-  \centering
-  \small Generation-optimized engines such as vLLM and SGLang target serving throughput, not necessarily score-capture workloads \parencite{kwonEfficientMemoryManagement2023,zhengSGLangEfficientExecution2024}.
+  \small Generation engines optimize sampled-token serving; compression needs ordered scores or intervals for exact encode/decode replay \parencite{kwonEfficientMemoryManagement2023,zhengSGLangEfficientExecution2024}.
 \end{frame}
 
 \begin{frame}{Global-Mask Compression}
@@ -86,8 +84,7 @@
     \end{column}
   \end{columns}
 
-  \vspace{0.4em}
-  \begin{block}{Lossless replay requirement}
-    The decoder must use the same model, tokenizer, vocabulary mask, context policy, and arithmetic-coding parameters.
-  \end{block}
+  \vspace{0.7em}
+  \centering
+  \small Lossless replay requires the same model, tokenizer, vocabulary mask, context policy, and coder parameters.
 \end{frame}

@@ -45,10 +45,10 @@
     \item \textbf{Move work near inference.} Target-interval capture avoids exporting dense score tensors.
 
     \vspace{0.4em}
-    \item \textbf{Batching changes the bottleneck.} After coding is optimized, model inference becomes the next floor.
+    \item \textbf{Batching changes the bottleneck.} Naive AC can dominate, but after O2/O3 the floor moves back to inference and score extraction.
 
     \vspace{0.4em}
-    \item \textbf{Serving metrics are incomplete.} High generation throughput does not imply high compression throughput.
+    \item \textbf{Serving engines are not yet specialized for this.} High generation throughput does not imply high compression throughput.
   \end{enumerate}
 \end{frame}
 
@@ -68,6 +68,7 @@
       \begin{itemize}
         \item Native interval-capture APIs
         \item Lower-overhead stateful scheduling
+        \item CPU-only paths with AVX-512 or other vector extensions
         \item Decode-aware cost models
         \item Integration with storage-tier policies
       \end{itemize}

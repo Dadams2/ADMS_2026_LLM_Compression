@@ -1,0 +1,72 @@
+\documentclass[tikz,border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{FiraSans}
+\usepackage{amsmath}
+\usetikzlibrary{arrows.meta,calc,positioning,decorations.pathreplacing}
+\definecolor{ceBlue}{RGB}{42,96,153}
+\definecolor{ceTeal}{RGB}{36,135,118}
+\definecolor{ceGold}{RGB}{220,160,52}
+\definecolor{ceRed}{RGB}{188,74,60}
+\definecolor{ceInk}{RGB}{42,42,42}
+\definecolor{ceGray}{RGB}{238,240,242}
+\begin{document}
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  font=\sffamily,
+  arr/.style={-{Stealth[length=5pt]}, thick, ceInk},
+  lab/.style={font=\scriptsize, ceInk, align=center},
+  smallbox/.style={draw=ceInk!40, rounded corners=2pt, fill=white, inner sep=3pt, font=\scriptsize, align=center},
+]
+  \node[font=\Large\bfseries, ceInk] at (6.7,6.15) {Arithmetic coding narrows an interval};
+
+  \coordinate (a0) at (0.6,4.85);
+  \coordinate (a1) at (12.8,4.85);
+  \draw[very thick, ceInk] (a0) -- (a1);
+  \foreach \x/\t in {0.6/0,12.8/1} {
+    \draw[ceInk] (\x,4.72) -- (\x,4.98);
+    \node[lab] at (\x,4.45) {$\t$};
+  }
+  \fill[ceTeal!25] (0.6,4.98) rectangle (6.7,5.42);
+  \fill[ceGold!28] (6.7,4.98) rectangle (10.75,5.42);
+  \fill[ceRed!22] (10.75,4.98) rectangle (12.8,5.42);
+  \draw[ceInk!50] (0.6,4.98) rectangle (12.8,5.42);
+  \draw[ceInk!50] (6.7,4.98) -- (6.7,5.42);
+  \draw[ceInk!50] (10.75,4.98) -- (10.75,5.42);
+  \node[lab] at (3.65,5.65) {token A\\large $p$};
+  \node[lab] at (8.72,5.65) {token B};
+  \node[lab] at (11.78,5.65) {token C};
+
+  \draw[arr] (8.7,4.25) -- (8.7,3.65);
+  \node[smallbox] at (11.0,4.22) {true next token: B};
+
+  \coordinate (b0) at (6.7,3.15);
+  \coordinate (b1) at (10.75,3.15);
+  \draw[very thick, ceInk] (b0) -- (b1);
+  \fill[ceTeal!25] (6.7,3.28) rectangle (8.3,3.72);
+  \fill[ceGold!28] (8.3,3.28) rectangle (9.65,3.72);
+  \fill[ceRed!22] (9.65,3.28) rectangle (10.75,3.72);
+  \draw[ceInk!50] (6.7,3.28) rectangle (10.75,3.72);
+  \draw[ceInk!50] (8.3,3.28) -- (8.3,3.72);
+  \draw[ceInk!50] (9.65,3.28) -- (9.65,3.72);
+  \node[lab] at (6.7,2.83) {$low$};
+  \node[lab] at (10.75,2.83) {$high$};
+  \node[lab] at (7.25,4.08) {same model,\\smaller range};
+
+  \draw[arr] (9.0,2.55) -- (9.0,1.95);
+  \node[smallbox] at (11.0,2.2) {repeat per token};
+
+  \coordinate (c0) at (8.3,1.45);
+  \coordinate (c1) at (9.65,1.45);
+  \draw[very thick, ceInk] (c0) -- (c1);
+  \fill[ceBlue!22] (8.72,1.58) rectangle (9.18,2.02);
+  \draw[ceInk!50] (8.3,1.58) rectangle (9.65,2.02);
+  \node[lab] at (9.0,1.13) {final interval};
+  \node[smallbox, fill=ceGray] at (4.1,1.75) {emit any bit prefix\\that lands inside};
+  \draw[arr] (5.85,1.75) -- (8.25,1.75);
+
+  \node[smallbox, fill=ceGold!14] at (2.9,3.35) {$\text{cost} \approx -\log_2 p(\text{true token})$};
+  \draw[decorate, decoration={brace, amplitude=5pt}, ceGold, thick]
+    (6.7,2.95) -- (10.75,2.95);
+\end{tikzpicture}
+\end{document}

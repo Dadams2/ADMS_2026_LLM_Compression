@@ -15,7 +15,7 @@
     \item \textbf{Target-interval capture is the strongest optimization.} It turns dense score processing into a constant-size per-token record.
 
     \vspace{0.45em}
-    \item \textbf{LLM compression is not a hot-path DB codec yet.} Today it is most plausible for cold analytical text where storage reduction outweighs compute cost.
+    \item \textbf{There is still systems headroom.} Current engines are not optimized for score extraction, and CPU SIMD paths remain underexplored.
   \end{enumerate}
 \end{frame}
 

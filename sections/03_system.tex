@@ -5,76 +5,38 @@
 \section{System}
 
 \begin{frame}{System Under Study}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.31\textwidth}
-      \begin{block}{Inference engines}
-        \begin{itemize}
-          \item \engine{Transformers}
-          \item \engine{vLLM}
-          \item \engine{TensorRT-LLM}
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \hfill
-    \begin{column}{0.31\textwidth}
-      \begin{block}{Logit paths}
-        \begin{itemize}
-          \item Direct final-position logits
-          \item Shared-memory capture
-          \item Offline generation logits
-        \end{itemize}
-      \end{block}
-    \end{column}
-    \hfill
-    \begin{column}{0.31\textwidth}
-      \begin{block}{Encodings}
-        \begin{itemize}
-          \item Arithmetic coding
-          \item Multistream AC
-          \item Target-interval AC
-          \item Rank variants
-        \end{itemize}
-      \end{block}
-    \end{column}
-  \end{columns}
-
-  \vspace{0.8em}
   \centering
-  \small Same compressor loop and predictor interface; custom logit paths isolate engine behavior from compressor implementation differences.
+  \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/engine_logit_paths.pdf}
+
+  \vspace{0.2em}
+  \small Same compressor loop and predictor interface; engine differences enter through score or interval capture.
 \end{frame}
 
-\begin{frame}{Three Optimizations Target Three Costs}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.31\textwidth}
-      \begin{block}{O1: vLLM windows}
-        Teacher-force multiple known target tokens in one engine call.
+\begin{frame}{Optimization Map}
+  \centering
+  \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/optimization_legend.pdf}
 
-        \vspace{0.3em}
-        \small Targets request scheduling overhead.
-      \end{block}
-    \end{column}
-    \hfill
-    \begin{column}{0.31\textwidth}
-      \begin{block}{O2: multistream AC}
-        Maintain one range coder per batch row and compile the hot update loop \parencite{Lam2015NumbaAL}.
-
-        \vspace{0.3em}
-        \small Targets Python and coder overhead.
-      \end{block}
-    \end{column}
-    \hfill
-    \begin{column}{0.31\textwidth}
-      \begin{block}{O3: target interval}
-        Return only the interval needed for the true next token.
-
-        \vspace{0.3em}
-        \small Targets score conversion and transfer.
-      \end{block}
-    \end{column}
-  \end{columns}
+  \vspace{0.2em}
+  \small O1 applies to vLLM; O2 and O3 preserve the lossless arithmetic-coding semantics \parencite{Lam2015NumbaAL}.
 \end{frame}
 
-\begin{frame}{Target-Interval Capture Changes the Data Path}
+\begin{frame}{O1: Teacher-Forced vLLM Windows}
+  \centering
+  \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/teacher_forcing.pdf}
+
+  \vspace{0.2em}
+  \small The sampler is forced to emit the known input token while the logits processor records each step's score vector.
+\end{frame}
+
+\begin{frame}{O2: Multistream and Pipelined AC}
+  \centering
+  \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/multistream_pipeline.pdf}
+
+  \vspace{0.2em}
+  \small Each batch row has an independent range coder; on Transformers, interval staging can run behind the next model call.
+\end{frame}
+
+\begin{frame}{O3: Target-Interval Capture}
   \centering
   \begin{tikzpicture}[
     box/.style={draw, rounded corners=2pt, minimum height=0.78cm,
@@ -95,8 +57,8 @@
     \draw[arr] (target) -- node[above, font=\tiny] {$O(1)$ per row-step} (record);
     \draw[arr] (record) -- (ac2);
 
-    \node[font=\small\bfseries] at (-1.6,1.4) {Before};
-    \node[font=\small\bfseries] at (-1.6,-1.0) {After};
+    \node[font=\small\bfseries] at (-2.3,1.4) {Before};
+    \node[font=\small\bfseries] at (-2.3,-1.0) {After};
   \end{tikzpicture}
 
   \vspace{0.7em}
