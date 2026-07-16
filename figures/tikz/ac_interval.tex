@@ -16,57 +16,55 @@
   font=\sffamily,
   arr/.style={-{Stealth[length=5pt]}, thick, ceInk},
   lab/.style={font=\scriptsize, ceInk, align=center},
-  smallbox/.style={draw=ceInk!40, rounded corners=2pt, fill=white, inner sep=3pt, font=\scriptsize, align=center},
+  tinylabel/.style={font=\tiny, ceInk, align=center},
+  box/.style={draw=ceInk!45, rounded corners=2pt, fill=white, inner sep=4pt, font=\scriptsize, align=center},
 ]
-  \node[font=\Large\bfseries, ceInk] at (6.7,6.15) {Arithmetic coding narrows an interval};
+  \path (-0.2,-0.75) rectangle (13.4,6.6);
+  \node[font=\Large\bfseries, ceInk] at (6.8,6.2) {Arithmetic coding: ``hello''};
 
-  \coordinate (a0) at (0.6,4.85);
-  \coordinate (a1) at (12.8,4.85);
-  \draw[very thick, ceInk] (a0) -- (a1);
-  \foreach \x/\t in {0.6/0,12.8/1} {
-    \draw[ceInk] (\x,4.72) -- (\x,4.98);
-    \node[lab] at (\x,4.45) {$\t$};
+  \node[box, fill=ceBlue!8, minimum width=2.5cm] (msg) at (1.45,5.3) {message\\\texttt{hello}};
+  \node[box, fill=ceGold!14, minimum width=3.1cm] (model) at (5.05,5.3) {model gives a symbol\\distribution at each step};
+  \node[box, fill=ceTeal!12, minimum width=2.7cm] (interval) at (8.6,5.3) {keep the subinterval\\for the true symbol};
+  \node[box, fill=ceRed!10, minimum width=2.45cm] (bits) at (12.0,5.3) {emit a point\\inside it};
+  \draw[arr] (msg) -- (model);
+  \draw[arr] (model) -- (interval);
+  \draw[arr] (interval) -- (bits);
+
+  \node[tinylabel] at (0.65,4.42) {step};
+  \node[tinylabel] at (2.4,4.42) {true symbol};
+  \node[tinylabel] at (6.85,4.42) {current interval};
+  \node[tinylabel] at (11.15,4.42) {new interval};
+
+  \foreach \i/\sym/\oldlo/\oldhi/\newlo/\newhi/\y in {
+    1/h/0/1/0.50000/0.70000/3.85,
+    2/e/0.50000/0.70000/0.55000/0.60000/3.20,
+    3/l/0.55000/0.60000/0.57500/0.59000/2.55,
+    4/l/0.57500/0.59000/0.58250/0.58700/1.90,
+    5/o/0.58250/0.58700/0.58655/0.58700/1.25
+  } {
+    \node[lab] at (0.65,\y) {\i};
+    \node[box, fill=ceBlue!8, minimum width=1.15cm] at (2.4,\y) {\texttt{\sym}};
+    \node[lab] at (6.85,\y) {$[\oldlo,\oldhi)$};
+    \node[lab] at (11.15,\y) {$[\newlo,\newhi)$};
+    \draw[arr] (8.55,\y) -- (9.6,\y);
   }
-  \fill[ceTeal!25] (0.6,4.98) rectangle (6.7,5.42);
-  \fill[ceGold!28] (6.7,4.98) rectangle (10.75,5.42);
-  \fill[ceRed!22] (10.75,4.98) rectangle (12.8,5.42);
-  \draw[ceInk!50] (0.6,4.98) rectangle (12.8,5.42);
-  \draw[ceInk!50] (6.7,4.98) -- (6.7,5.42);
-  \draw[ceInk!50] (10.75,4.98) -- (10.75,5.42);
-  \node[lab] at (3.65,5.65) {token A\\large $p$};
-  \node[lab] at (8.72,5.65) {token B};
-  \node[lab] at (11.78,5.65) {token C};
 
-  \draw[arr] (8.7,4.25) -- (8.7,3.65);
-  \node[smallbox] at (11.0,4.22) {true next token: B};
+  \draw[very thick, ceInk] (0.9,-0.35) -- (12.7,-0.35);
+  \draw[ceInk] (0.9,-0.48) -- (0.9,-0.22);
+  \draw[ceInk] (12.7,-0.48) -- (12.7,-0.22);
+  \node[tinylabel] at (0.9,-0.65) {$0$};
+  \node[tinylabel] at (12.7,-0.65) {$1$};
 
-  \coordinate (b0) at (6.7,3.15);
-  \coordinate (b1) at (10.75,3.15);
-  \draw[very thick, ceInk] (b0) -- (b1);
-  \fill[ceTeal!25] (6.7,3.28) rectangle (8.3,3.72);
-  \fill[ceGold!28] (8.3,3.28) rectangle (9.65,3.72);
-  \fill[ceRed!22] (9.65,3.28) rectangle (10.75,3.72);
-  \draw[ceInk!50] (6.7,3.28) rectangle (10.75,3.72);
-  \draw[ceInk!50] (8.3,3.28) -- (8.3,3.72);
-  \draw[ceInk!50] (9.65,3.28) -- (9.65,3.72);
-  \node[lab] at (6.7,2.83) {$low$};
-  \node[lab] at (10.75,2.83) {$high$};
-  \node[lab] at (7.25,4.08) {same model,\\smaller range};
+  \fill[ceTeal!45] (7.82,-0.2) rectangle (7.88,0.24);
+  \draw[ceInk!45] (7.82,-0.2) rectangle (7.88,0.24);
+  \node[box, fill=ceTeal!10] at (6.15,0.63) {final interval\\$[0.58655,\,0.58700)$};
+  \draw[arr] (6.95,0.43) -- (7.78,0.18);
 
-  \draw[arr] (9.0,2.55) -- (9.0,1.95);
-  \node[smallbox] at (11.0,2.2) {repeat per token};
-
-  \coordinate (c0) at (8.3,1.45);
-  \coordinate (c1) at (9.65,1.45);
-  \draw[very thick, ceInk] (c0) -- (c1);
-  \fill[ceBlue!22] (8.72,1.58) rectangle (9.18,2.02);
-  \draw[ceInk!50] (8.3,1.58) rectangle (9.65,2.02);
-  \node[lab] at (9.0,1.13) {final interval};
-  \node[smallbox, fill=ceGray] at (4.1,1.75) {emit any bit prefix\\that lands inside};
-  \draw[arr] (5.85,1.75) -- (8.25,1.75);
-
-  \node[smallbox, fill=ceGold!14] at (2.9,3.35) {$\text{cost} \approx -\log_2 p(\text{true token})$};
-  \draw[decorate, decoration={brace, amplitude=5pt}, ceGold, thick]
-    (6.7,2.95) -- (10.75,2.95);
+  \node[box, fill=ceRed!10, minimum width=3.4cm] at (10.85,0.63)
+    {choose a binary fraction\\$0.\texttt{1001011001}_2 = 601/1024$};
+  \draw[arr] (9.15,0.55) -- (7.95,0.12);
+  \node[box, fill=ceGray, minimum width=2.5cm] at (2.85,0.63)
+    {compressed bitstream\\\texttt{1001011001}};
+  \draw[arr] (4.15,0.55) -- (7.72,0.12);
 \end{tikzpicture}
 \end{document}

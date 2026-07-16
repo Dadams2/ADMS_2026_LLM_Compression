@@ -39,28 +39,42 @@
 \begin{frame}{O3: Target-Interval Capture}
   \centering
   \begin{tikzpicture}[
-    box/.style={draw, rounded corners=2pt, minimum height=0.78cm,
+    box/.style={draw, rounded corners=2pt, minimum height=0.72cm,
                 align=center, font=\small},
+    tiny/.style={font=\tiny, align=center},
     arr/.style={-{Stealth[length=5pt]}, thick},
   ]
-    \node[box, fill=red!10, minimum width=3.2cm] (dense) at (0,1.4) {Dense scores\\$B \times |V'|$ floats};
-    \node[box, fill=red!10, minimum width=3.2cm] (softmax) at (4.0,1.4) {Host softmax\\and cumulative sums};
-    \node[box, fill=red!10, minimum width=3.2cm] (ac1) at (8.0,1.4) {Interval lookup\\then AC update};
-
+    \node[font=\small\bfseries] at (0,2.75) {Before: move the whole distribution};
+    \node[box, fill=red!10, minimum width=3.0cm] (dense) at (0,1.85) {dense logits\\$|V'|$ floats};
+    \node[box, fill=red!10, minimum width=3.0cm] (softmax) at (4.0,1.85) {softmax + CDF\\on host};
+    \node[box, fill=red!10, minimum width=3.0cm] (lookup) at (8.0,1.85) {find true-token\\interval};
     \draw[arr] (dense) -- (softmax);
-    \draw[arr] (softmax) -- (ac1);
+    \draw[arr] (softmax) -- (lookup);
 
-    \node[box, fill=green!12, minimum width=3.2cm] (target) at (0,-1.0) {Backend computes\\target interval};
-    \node[box, fill=green!12, minimum width=3.2cm] (record) at (4.0,-1.0) {Fixed-size record\\$(\ell,h,T,p)$};
-    \node[box, fill=green!12, minimum width=3.2cm] (ac2) at (8.0,-1.0) {Direct AC\\update};
+    \draw[thick] (1.1,0.8) rectangle (10.9,1.12);
+    \fill[blue!12] (1.1,0.8) rectangle (3.7,1.12);
+    \fill[orange!18] (3.7,0.8) rectangle (5.5,1.12);
+    \fill[green!20] (5.5,0.8) rectangle (6.55,1.12);
+    \fill[red!18] (6.55,0.8) rectangle (7.15,1.12);
+    \fill[gray!20] (7.15,0.8) rectangle (10.9,1.12);
+    \draw[thick, mDarkTeal] (6.55,0.73) rectangle (7.15,1.19);
+    \node[tiny] at (1.1,0.48) {$0$};
+    \node[tiny] at (10.9,0.48) {$T$};
+    \node[tiny, mDarkTeal, text width=1.1cm] at (6.85,0.36) {true\\token};
+    \draw[arr, mDarkTeal] (6.85,0.35) -- (6.85,0.72);
 
-    \draw[arr] (target) -- node[above, font=\tiny] {$O(1)$ per row-step} (record);
+    \draw[mDarkTeal, very thick, decorate, decoration={brace, amplitude=4pt}]
+      (6.55,1.33) -- (7.15,1.33);
+    \node[tiny, mDarkTeal] at (6.85,1.58) {$[\ell,h)$};
+
+    \node[font=\small\bfseries] at (0,-0.45) {After: capture only the interval};
+    \node[box, fill=green!12, minimum width=3.0cm] (backend) at (0,-1.35) {backend computes\\CDF position};
+    \node[box, fill=green!12, minimum width=3.0cm] (record) at (4.0,-1.35) {fixed-size record\\$(\ell,h,T)$};
+    \node[box, fill=green!12, minimum width=3.0cm] (ac2) at (8.0,-1.35) {range coder\\update};
+    \draw[arr] (backend) -- node[above, font=\tiny] {per row-step} (record);
     \draw[arr] (record) -- (ac2);
-
-    \node[font=\small\bfseries] at (-2.3,1.4) {Before};
-    \node[font=\small\bfseries] at (-2.3,-1.0) {After};
   \end{tikzpicture}
 
-  \vspace{0.7em}
+  \vspace{0.3em}
   \small The arithmetic coder does not need the full probability vector; it needs the quantized interval assigned to the true token.
 \end{frame}

@@ -91,8 +91,8 @@
 \end{frame}
 
 \input{sections/01_motivation}
-\input{sections/02_related_work}
 \input{sections/02_background}
+\input{sections/02_related_work}
 \input{sections/03_system}
 \input{sections/04_results}
 \input{sections/05_implications}
@@ -100,20 +100,6 @@
 
 \appendix
 
-\begin{frame}{Appendix: Experimental Setup}
-  \small
-  \begin{tabularx}{\textwidth}{lX}
-    \toprule
-    \textbf{Dimension} & \textbf{Configuration} \\
-    \midrule
-    Model & \texttt{Qwen/Qwen2.5-0.5B} \\
-    Default hardware & Dual AMD EPYC Milan 7313, 512 GB DDR4, NVIDIA A100 40 GB SXM4 \\
-    Datasets & \texttt{text8}, Python code from PyTorrent, Yelp Open Dataset records \\
-    Default operating point & Batch size 256, context length 256, 100 retained tokens \\
-    Metrics & Throughput in uncompressed MB/s; compression ratio as original/compressed size \\
-    \bottomrule
-  \end{tabularx}
-\end{frame}
 
 \begin{frame}[allowframebreaks]{References}
   \scriptsize

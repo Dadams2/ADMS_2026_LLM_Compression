@@ -4,6 +4,21 @@
 
 \section{Results}
 
+\begin{frame}{Experimental Setup}
+  \small
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Dimension} & \textbf{Configuration} \\
+    \midrule
+    Model & \texttt{Qwen/Qwen2.5-0.5B} \\
+    Default hardware & Dual AMD EPYC Milan 7313, 512 GB DDR4, NVIDIA A100 40 GB SXM4 \\
+    Datasets & \texttt{text8}, Python code from PyTorrent, Yelp Open Dataset records \\
+    Default operating point & Batch size 256, context length 256, 100 retained tokens \\
+    Metrics & Throughput in uncompressed MB/s; compression ratio as original/compressed size \\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
 \begin{frame}{Result 1: Generation Engines Do Not Automatically Win}
   \small
   \begin{tabularx}{\textwidth}{llYYY}
@@ -19,7 +34,7 @@
   \end{tabularx}
 
   \vspace{0.8em}
-  \begin{block}{Interpretation}
+  \begin{block}{Takeaway}
     vLLM and TensorRT-LLM are excellent generation systems, but this workload exposes scheduling, synchronization, and score-capture costs that ordinary serving can hide \parencite{kwonEfficientMemoryManagement2023,Kipf2026WaitingTD}.
   \end{block}
 \end{frame}
@@ -74,29 +89,29 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Result 4: Context Length Mostly Buys Ratio}
-  \small
-  \begin{tabularx}{0.78\textwidth}{YYYY}
-    \toprule
-    \textbf{Context} & \textbf{Retain} & \textbf{MB/s} & \textbf{Ratio} \\
-    \midrule
-    32 & 16 & 0.0324 & 6.2288 \\
-    64 & 32 & 0.0338 & 6.6592 \\
-    128 & 64 & 0.0339 & 6.9239 \\
-    \textbf{256} & \textbf{100} & \textbf{0.0337} & \textbf{7.0600} \\
-    512 & 256 & 0.0349 & 7.1007 \\
-    \bottomrule
-  \end{tabularx}
+% \begin{frame}{Result 4: Context Length Mostly Buys Ratio}
+%   \small
+%   \begin{tabularx}{0.78\textwidth}{YYYY}
+%     \toprule
+%     \textbf{Context} & \textbf{Retain} & \textbf{MB/s} & \textbf{Ratio} \\
+%     \midrule
+%     32 & 16 & 0.0324 & 6.2288 \\
+%     64 & 32 & 0.0338 & 6.6592 \\
+%     128 & 64 & 0.0339 & 6.9239 \\
+%     \textbf{256} & \textbf{100} & \textbf{0.0337} & \textbf{7.0600} \\
+%     512 & 256 & 0.0349 & 7.1007 \\
+%     \bottomrule
+%   \end{tabularx}
 
-  \vspace{0.8em}
-  \begin{itemize}
-    \item Throughput is nearly flat from context 64 to 512.
-    \item Compression ratio improves, with diminishing returns after the first few hundred tokens.
-    \item Context 256 is a memory-efficient default for this setup.
-  \end{itemize}
-\end{frame}
+%   \vspace{0.8em}
+%   \begin{itemize}
+%     \item Throughput is nearly flat from context 64 to 512.
+%     \item Compression ratio improves, with diminishing returns after the first few hundred tokens.
+%     \item Context 256 is a memory-efficient default for this setup.
+%   \end{itemize}
+% \end{frame}
 
-\begin{frame}{Result 5: LLM Ratios Are Strong, But Throughput Is Not}
+\begin{frame}{Result 4: LLM Ratios Are Strong, But Throughput Is Not}
   \small
   \begin{tabularx}{\textwidth}{lYYY}
     \toprule

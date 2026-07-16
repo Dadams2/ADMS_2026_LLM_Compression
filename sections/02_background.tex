@@ -4,38 +4,148 @@
 
 \section{Background}
 
-\begin{frame}{LLM Compression as Next-Token Prediction}
+\newcommand{\codecell}[2]{%
+  {\fontsize{17.5}{19}\selectfont\sffamily\bfseries\textcolor{mDarkTeal}{#1:}}%
+  \hspace{0.08em}{\fontsize{7.8}{9.4}\selectfont\ttfamily\bfseries\textcolor{black!55}{#2}}%
+}
+
+\begin{frame}{Fixed-Length Codes: ASCII}
+  \centering
+  \resizebox{0.94\textwidth}{!}{%
+  \begin{tikzpicture}
+    \node[
+      fill=mDarkTeal!3,
+      draw=mDarkTeal!14,
+      rounded corners=2pt,
+      inner xsep=9pt,
+      inner ysep=9pt
+    ] {
+      \begin{minipage}{0.98\textwidth}
+        \centering
+        {\fontsize{25}{27}\selectfont\sffamily\bfseries
+          \textcolor{mDarkTeal}{ASCII $\longrightarrow$ }%
+          \textcolor{mLightBrown}{8.0}%
+          \hspace{0.18em}%
+          \textcolor{mDarkTeal}{ bits/ch}}
+
+        \vspace{0.75em}
+        \setlength{\tabcolsep}{0pt}
+        \renewcommand{\arraystretch}{1.95}
+        \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llllll}
+          \codecell{a}{01100001} & \codecell{b}{01100010} & \codecell{c}{01100011} & \codecell{d}{01100100} & \codecell{e}{01100101} & \codecell{f}{01100110} \\
+          \codecell{g}{01100111} & \codecell{h}{01101000} & \codecell{i}{01101001} & \codecell{j}{01101010} & \codecell{k}{01101011} & \codecell{l}{01101100} \\
+          \codecell{m}{01101101} & \codecell{n}{01101110} & \codecell{o}{01101111} & \codecell{p}{01110000} & \codecell{q}{01110001} & \codecell{r}{01110010} \\
+          \codecell{s}{01110011} & \codecell{t}{01110100} & \codecell{u}{01110101} & \codecell{v}{01110110} & \codecell{w}{01110111} & \codecell{x}{01111000} \\
+          \codecell{y}{01111001} & \codecell{z}{01111010} & \codecell{0}{00110000} & \codecell{1}{00110001} & \codecell{2}{00110010} & \codecell{3}{00110011} \\
+          \codecell{4}{00110100} & \codecell{5}{00110101} & \codecell{6}{00110110} & \codecell{7}{00110111} & \codecell{8}{00111000} & \codecell{9}{00111001}
+        \end{tabular*}
+      \end{minipage}
+    };
+  \end{tikzpicture}%
+  }
+
+  \vspace{0.2em}
+  \small Every character gets the same 8-bit budget, regardless of how often it appears.
+\end{frame}
+
+\begin{frame}{Variable-Length Codes: Huffman}
+  \centering
+  \resizebox{0.94\textwidth}{!}{%
+  \begin{tikzpicture}
+    \node[
+      fill=mDarkTeal!3,
+      draw=mDarkTeal!14,
+      rounded corners=2pt,
+      inner xsep=9pt,
+      inner ysep=9pt
+    ] {
+      \begin{minipage}{0.98\textwidth}
+        \centering
+        {\fontsize{25}{27}\selectfont\sffamily\bfseries
+          \textcolor{mDarkTeal}{Huffman $\longrightarrow{\sim}$}%
+          \textcolor{mLightBrown}{4.2}%
+          \hspace{0.18em}%
+          \textcolor{mDarkTeal}{ bits/ch}}
+
+        \vspace{0.75em}
+        \setlength{\tabcolsep}{0pt}
+        \renewcommand{\arraystretch}{1.95}
+        \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llllll}
+          \codecell{a}{1111} & \codecell{b}{010101} & \codecell{c}{01011} & \codecell{d}{11100} & \codecell{e}{011} & \codecell{f}{00100} \\
+          \codecell{g}{110111} & \codecell{h}{0011} & \codecell{i}{1100} & \codecell{j}{110101010} & \codecell{k}{0010110} & \codecell{l}{11101} \\
+          \codecell{m}{01000} & \codecell{n}{1011} & \codecell{o}{1010} & \codecell{p}{110110} & \codecell{q}{0010111010} & \codecell{r}{1001} \\
+          \codecell{s}{1000} & \codecell{t}{000} & \codecell{u}{01001} & \codecell{v}{001010} & \codecell{w}{110100} & \codecell{x}{001011100} \\
+          \codecell{y}{010100} & \codecell{z}{1101010111} & \codecell{0}{00101111} & \codecell{1}{11010100} & \codecell{2}{110101110} & \codecell{3}{110101111} \\
+          \codecell{4}{1101011010} & \codecell{5}{1101011110} & \codecell{6}{1101010110} & \codecell{7}{0010111011} & \codecell{8}{1101011011} & \codecell{9}{110101100}
+        \end{tabular*}
+      \end{minipage}
+    };
+  \end{tikzpicture}%
+  }
+
+  \vspace{0.2em}
+  \small Frequent symbols get shorter codewords; rare symbols pay more \parencite{Huffman1952AMF}.
+\end{frame}
+
+\begin{frame}{Arithmetic Coding: Compressing ``hello''}
+  \centering
+  \includegraphics[width=0.94\textwidth,height=0.76\textheight,keepaspectratio]{figures/tikz/ac_interval.pdf}
+
+  \vspace{0.2em}
+  \small The message is represented by a final interval; any binary fraction inside that interval decodes to the same text \parencite{rissanenArithmeticCoding1979}.
+\end{frame}
+
+\begin{frame}{Language Modeling Objective}
+  \centering
+  \Large
+  \[
+    P(x_{1:n}) = \prod_{t=1}^{n} P(x_t \mid x_{<t})
+  \]
+
+  \vspace{0.8em}
+  \[
+    \mathcal{L}_{\mathrm{NTP}}
+      = - \sum_{t=1}^{n} \log P_\theta(x_t \mid x_{<t})
+  \]
+
+  \vspace{0.8em}
+  \normalsize
+  Next-token prediction trains the same conditional probabilities an entropy coder needs.
+\end{frame}
+
+\begin{frame}{LLM as Next-Token Prediction}
   \centering
   \resizebox{\textwidth}{!}{%
   \begin{tikzpicture}[
-    node distance=1.15cm and 1.15cm,
+    node distance=0.9cm and 0.9cm,
     box/.style={draw, rounded corners=2pt, minimum width=2.15cm,
                 minimum height=0.85cm, align=center, font=\small},
     arr/.style={-{Stealth[length=5pt]}, thick},
   ]
-    \node[box, fill=mLightBrown!18, minimum width=1.8cm] (text) {Text\\bytes};
-    \node[box, fill=blue!12, right=of text] (tok) {Tokenizer\\$x_{1:n}$};
-    \node[box, fill=green!14, right=of tok] (model) {LLM\\logits};
-    \node[box, fill=orange!16, right=of model] (coder) {Entropy\\coder};
-    \node[box, fill=gray!16, minimum width=2.0cm, right=of coder] (bits) {Compressed\\bits};
+    \node[box, fill=blue!12, minimum width=2.55cm] (input) {Input tokens\\\texttt{the celtics are}};
+    \node[box, fill=mLightBrown!20, minimum width=2.35cm, right=of input] (model) {Language model\\e.g., GPT};
+    \node[box, fill=green!14, minimum width=3.0cm, right=of model] (dist) {Predicted distribution\\
+      \texttt{playing}: 0.34\\
+      \texttt{favored}: 0.18\\
+      \texttt{in}: 0.08\\
+      \ldots};
+    \node[box, fill=orange!16, minimum width=2.7cm, right=of dist] (coder) {Arithmetic encoder\\actual token = \texttt{playing}};
+    \node[box, fill=red!10, minimum width=2.45cm, right=of coder] (bits) {Compressed bitstream\\\texttt{101101...}};
 
-    \draw[arr] (text) -- (tok);
-    \draw[arr] (tok) -- (model);
-    \draw[arr] (model) -- node[above, font=\tiny] {$p(x_{t+1}\mid x_{\le t})$} (coder);
+    \draw[arr] (input) -- (model);
+    \draw[arr] (model) -- (dist);
+    \draw[arr] (dist) -- (coder);
     \draw[arr] (coder) -- (bits);
+
+    \node[font=\scriptsize, align=center] at ($(model.south)+(0,-0.55)$)
+      {predicts $P(\text{token}\mid\text{context})$};
+    \node[font=\scriptsize, align=center] at ($(coder.south)+(0,-0.65)$)
+      {encodes the observed next token\\using the predicted distribution};
   \end{tikzpicture}
   }
 
-  \vspace{1.2em}
-  \large Better predictions reduce bits; every token still requires model replay.
-\end{frame}
-
-\begin{frame}{Arithmetic Coding: The Mechanism}
-  \centering
-  \includegraphics[width=0.92\textwidth,height=0.76\textheight,keepaspectratio]{figures/tikz/ac_interval.pdf}
-
-  \vspace{0.3em}
-  \small The coder keeps narrowing the interval assigned to the true next token; expected cost is approximately $-\log_2 p(x_{t+1})$ bits \parencite{rissanenArithmeticCoding1979}.
+\vspace{0.6em}
+\small Better predictions reduce bits; every token still requires deterministic model replay.
 \end{frame}
 
 \begin{frame}{Compression Is Not Ordinary Text Generation}
@@ -60,31 +170,4 @@
 
   \vspace{0.8em}
   \small Generation engines optimize sampled-token serving; compression needs ordered scores or intervals for exact encode/decode replay \parencite{kwonEfficientMemoryManagement2023,zhengSGLangEfficientExecution2024}.
-\end{frame}
-
-\begin{frame}{Global-Mask Compression}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.48\textwidth}
-      \textbf{Compressor state}
-      \begin{itemize}
-        \item Token sequence $x_{1:n}$
-        \item Global allowed-token set $V'$
-        \item Row seeds for batched streams
-        \item Context limit $R$
-      \end{itemize}
-    \end{column}
-    \hfill
-    \begin{column}{0.48\textwidth}
-      \textbf{Per-step operation}
-      \begin{align*}
-        z_t &= M(c_t) \\
-        p_j &= \frac{\exp z_{t,j}}{\sum_{k \in V'} \exp z_{t,k}} \\
-        \ell_t &\approx -\log_2 p_{x_{t+1}}
-      \end{align*}
-    \end{column}
-  \end{columns}
-
-  \vspace{0.7em}
-  \centering
-  \small Lossless replay requires the same model, tokenizer, vocabulary mask, context policy, and coder parameters.
 \end{frame}

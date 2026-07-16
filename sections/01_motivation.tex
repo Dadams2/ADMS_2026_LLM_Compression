@@ -27,32 +27,61 @@
 
   \vspace{1.0em}
   \begin{itemize}
-    \item Analytical systems increasingly store and process large amounts of text.
-    \item Compression already appears in production data pipelines, mostly through conventional codecs.
-    \item Cold text is attractive: it is retained, moved, and scanned, but not constantly updated.
+    \item Storage is expensive 
+    \item Data is stored for backup or compliance
+    \item Most data is \textbf{cold} the moment it is created
   \end{itemize}
 \end{frame}
 
-\begin{frame}{The Storage Codec Question}
+\begin{frame}{Storage Codec Question: Current Practice}
   \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.44\textwidth}
-      \textbf{Classical compressors}
+    \begin{column}{0.50\textwidth}
+      \textbf{Block-based compression}
       \begin{itemize}
-        \item Extremely fast
-        \item Cheap CPU deployment
-        \item Moderate text compression ratios
-        \item Mature in DBMS pipelines \parencite{zstd,fsst}
+        \item Compress independent byte blocks
+        \item Cheap CPU path at ingest and scan time
+        \item Mature formats: \codec{zstd}, FSST, dictionary codecs \parencite{zstd,fsst}
+        \item Good engineering fit for DBMS storage pages
       \end{itemize}
     \end{column}
     \hfill
-    \begin{column}{0.50\textwidth}
-      \textbf{LLM-based compressors}
+    \begin{column}{0.44\textwidth}
+      \begin{block}{Why it works operationally}
+        \centering
+        \Large fast, cheap, predictable
+
+        \vspace{0.6em}
+        \normalsize
+        The codec adds little latency and keeps decompression local to the block being read.
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.8em}
+  \centering
+  \small The tradeoff: classical codecs leave language-level redundancy on the table.
+\end{frame}
+
+\begin{frame}{Storage Codec Question: Language Models as Compressors}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.52\textwidth}
+      \textbf{Prediction becomes compression}
       \begin{itemize}
-        \item Strong language priors
-        \item High compression-ratio potential \parencite{llmzip,lossless_data_compression_llm}
-        \item Require neural inference during encode and decode
-        \item Need deterministic model and coder replay
+        \item Better next-token probabilities mean fewer encoded bits
+        \item Chinchilla 70B beats domain-specific compressors on several modalities \parencite{deletangLanguageModelingCompression2024}
+        \item LLMZip and later work show strong text ratios \parencite{llmzip,lossless_data_compression_llm}
       \end{itemize}
+    \end{column}
+    \hfill
+    \begin{column}{0.42\textwidth}
+      \begin{block}{Systems catch}
+        \centering
+        \Large slow unless engineered
+
+        \vspace{0.6em}
+        \normalsize
+        Encode and decode replay the same model calls and entropy-coder updates.
+      \end{block}
     \end{column}
   \end{columns}
 
