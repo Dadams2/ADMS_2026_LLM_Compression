@@ -17,64 +17,198 @@
   \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/optimization_legend.pdf}
 
   \vspace{0.2em}
-  \small O1 applies to vLLM; O2 and O3 preserve the lossless arithmetic-coding semantics \parencite{Lam2015NumbaAL}.
+  \small All three preserve the encoded probabilities. O1 and compressor-side O3 exploit that the input's next token is already known; O2 accelerates equivalent range-coder updates \parencite{Lam2015NumbaAL}.
 \end{frame}
 
-\begin{frame}{O1: Teacher-Forced vLLM Windows}
-  \centering
-  \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/teacher_forcing.pdf}
-
-  \vspace{0.2em}
-  \small The sampler is forced to emit the known input token while the logits processor records each step's score vector.
-\end{frame}
-
-\begin{frame}{O2: Multistream and Pipelined AC}
-  \centering
-  \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/multistream_pipeline.pdf}
-
-  \vspace{0.2em}
-  \small Each batch row has an independent range coder; on Transformers, interval staging can run behind the next model call.
-\end{frame}
-
-\begin{frame}{O3: Target-Interval Capture}
+\begin{frame}{O1: Amortize the Request Boundary}
   \centering
   \begin{tikzpicture}[
-    box/.style={draw, rounded corners=2pt, minimum height=0.72cm,
-                align=center, font=\small},
-    tiny/.style={font=\tiny, align=center},
-    arr/.style={-{Stealth[length=5pt]}, thick},
+    reqbox/.style={draw,rounded corners=2pt,minimum width=1.8cm,minimum height=0.72cm,align=center,font=\scriptsize},
+    arr/.style={-{Stealth[length=5pt]},thick},
   ]
-    \node[font=\small\bfseries] at (0,2.75) {Before: move the whole distribution};
-    \node[box, fill=red!10, minimum width=3.0cm] (dense) at (0,1.85) {dense logits\\$|V'|$ floats};
-    \node[box, fill=red!10, minimum width=3.0cm] (softmax) at (4.0,1.85) {softmax + CDF\\on host};
-    \node[box, fill=red!10, minimum width=3.0cm] (lookup) at (8.0,1.85) {find true-token\\interval};
-    \draw[arr] (dense) -- (softmax);
-    \draw[arr] (softmax) -- (lookup);
+    \node[anchor=east,font=\small\bfseries] at (0.2,2.15) {baseline};
+    \foreach \i/\x in {0/1.5,1/4.2,2/6.9,3/9.6} {
+      \node[reqbox,fill=red!9] (r\i) at (\x,2.15) {request + schedule\\score $t+\i$};
+    }
+    \draw[arr] (r0) -- (r1);
+    \draw[arr] (r1) -- (r2);
+    \draw[arr] (r2) -- (r3);
+    \node[font=\scriptsize,text=red!70!black] at (5.55,1.38) {four request creations, schedules, and synchronizations};
 
-    \draw[thick] (1.1,0.8) rectangle (10.9,1.12);
-    \fill[blue!12] (1.1,0.8) rectangle (3.7,1.12);
-    \fill[orange!18] (3.7,0.8) rectangle (5.5,1.12);
-    \fill[green!20] (5.5,0.8) rectangle (6.55,1.12);
-    \fill[red!18] (6.55,0.8) rectangle (7.15,1.12);
-    \fill[gray!20] (7.15,0.8) rectangle (10.9,1.12);
-    \draw[thick, mDarkTeal] (6.55,0.73) rectangle (7.15,1.19);
-    \node[tiny] at (1.1,0.48) {$0$};
-    \node[tiny] at (10.9,0.48) {$T$};
-    \node[tiny, mDarkTeal, text width=1.1cm] at (6.85,0.36) {true\\token};
-    \draw[arr, mDarkTeal] (6.85,0.35) -- (6.85,0.72);
-
-    \draw[mDarkTeal, very thick, decorate, decoration={brace, amplitude=4pt}]
-      (6.55,1.33) -- (7.15,1.33);
-    \node[tiny, mDarkTeal] at (6.85,1.58) {$[\ell,h)$};
-
-    \node[font=\small\bfseries] at (0,-0.45) {After: capture only the interval};
-    \node[box, fill=green!12, minimum width=3.0cm] (backend) at (0,-1.35) {backend computes\\CDF position};
-    \node[box, fill=green!12, minimum width=3.0cm] (record) at (4.0,-1.35) {fixed-size record\\$(\ell,h,T)$};
-    \node[box, fill=green!12, minimum width=3.0cm] (ac2) at (8.0,-1.35) {range coder\\update};
-    \draw[arr] (backend) -- node[above, font=\tiny] {per row-step} (record);
-    \draw[arr] (record) -- (ac2);
+    \node[anchor=east,font=\small\bfseries] at (0.2,-0.35) {window $w=4$};
+    \node[reqbox,fill=blue!12] (s0) at (1.5,-0.35) {score $t$\\force $x_{t+1}$};
+    \node[reqbox,fill=blue!12] (s1) at (4.2,-0.35) {score $t+1$\\force $x_{t+2}$};
+    \node[reqbox,fill=blue!12] (s2) at (6.9,-0.35) {score $t+2$\\force $x_{t+3}$};
+    \node[reqbox,fill=blue!12] (s3) at (9.6,-0.35) {score $t+3$\\force $x_{t+4}$};
+    \draw[arr] (s0) -- node[above,font=\tiny] {KV state} (s1);
+    \draw[arr] (s1) -- node[above,font=\tiny] {KV state} (s2);
+    \draw[arr] (s2) -- node[above,font=\tiny] {KV state} (s3);
+    \node[draw=mDarkTeal,rounded corners=2pt,fit=(s0)(s1)(s2)(s3),inner sep=7pt,label={[font=\scriptsize,mDarkTeal]below:one vLLM request}] {};
   \end{tikzpicture}
 
-  \vspace{0.3em}
-  \small The arithmetic coder does not need the full probability vector; it needs the quantized interval assigned to the true token.
+  \vspace{0.8em}
+  \begin{block}{What O1 saves}
+    The same four model positions are evaluated. Windowing pays the fixed engine boundary once, rather than reducing the per-token transformer computation.
+  \end{block}
+\end{frame}
+
+\begin{frame}{O1: What Happens Inside Each Window Step}
+  \centering
+  \begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,minimum width=2.55cm,minimum height=0.9cm,align=center,font=\small},
+    arr/.style={-{Stealth[length=5pt]},thick},
+  ]
+    \node[box,fill=blue!10] (score) at (0,1.3) {1. compute honest logits\\from current prefix};
+    \node[box,fill=mLightBrown!15] (record) at (3.55,1.3) {2. record scores\\or target interval};
+    \node[box,fill=green!12] (force) at (7.1,1.3) {3. force known $x_{t+1}$\\in the sampler};
+    \node[box,fill=mDarkTeal!12] (advance) at (10.65,1.3) {4. append token\\advance KV cache};
+    \draw[arr] (score) -- (record);
+    \draw[arr] (record) -- (force);
+    \draw[arr] (force) -- (advance);
+    \draw[arr,rounded corners=5pt] (advance.south) -- ++(0,-0.75) -| node[below,pos=0.25,font=\scriptsize] {next internal decode step} (score.south);
+
+    \node[draw,rounded corners=2pt,fill=black!4,align=center,font=\small,minimum width=5.35cm,minimum height=1.05cm] at (2.3,-1.15)
+      {generation: sampled token\\chooses the next prefix};
+    \node[draw,rounded corners=2pt,fill=mDarkTeal!8,align=center,font=\small,minimum width=5.35cm,minimum height=1.05cm] at (8.35,-1.15)
+      {compression: observed file token\\chooses the next prefix};
+  \end{tikzpicture}
+
+  \vspace{0.55em}
+  \small The score is captured \emph{before} forcing changes the sampler. KV caching avoids recomputing old keys and values, but each new position still runs the model.
+\end{frame}
+
+\begin{frame}{O2: Split the File into Row-Local Streams}
+  \centering
+  \begin{tikzpicture}[
+    token/.style={draw,rounded corners=2pt,minimum width=0.75cm,minimum height=0.52cm,font=\scriptsize},
+    box/.style={draw,rounded corners=2pt,minimum height=0.72cm,align=center,font=\small},
+    arr/.style={-{Stealth[length=5pt]},thick},
+  ]
+    \node[font=\small\bfseries] at (1.45,3.2) {contiguous input rows};
+    \node[font=\small\bfseries] at (6.0,3.2) {batched step $t$};
+    \node[font=\small\bfseries] at (10.3,3.2) {independent coder states};
+
+    \foreach \r/\y in {0/2.25,1/1.15,2/0.05} {
+      \node[token,fill=mLightBrown!22] (seed\r) at (0,\y) {$x_{\r,1}$};
+      \node[token,fill=blue!9] (a\r) at (0.95,\y) {$x_{\r,2}$};
+      \node[token,fill=blue!9] (b\r) at (1.90,\y) {$\cdots$};
+      \node[token,fill=blue!9] (c\r) at (2.85,\y) {$x_{\r,m_r}$};
+      \node[box,fill=green!10,minimum width=2.15cm] (pred\r) at (6.0,\y) {$p_{\r,t}$ + true $x_{\r,t+1}$};
+      \node[box,fill=mDarkTeal!12,minimum width=2.0cm] (coder\r) at (9.25,\y) {range coder $\r$};
+      \node[box,fill=red!8,minimum width=1.6cm] (bits\r) at (11.85,\y) {bits $\r$};
+      \draw[arr] (c\r) -- (pred\r);
+      \draw[arr] (pred\r) -- node[above,font=\tiny] {$(\ell,h,T)$} (coder\r);
+      \draw[arr] (coder\r) -- (bits\r);
+    }
+
+    \node[draw,rounded corners=2pt,fill=mLightBrown!10,align=center,font=\small,minimum width=4.1cm,minimum height=0.75cm] at (1.45,-1.25)
+      {store the first token of each row\\to seed autoregressive decoding};
+    \node[draw,rounded corners=2pt,fill=black!4,align=center,font=\small,minimum width=7.0cm,minimum height=0.75cm] at (9.1,-1.25)
+      {parallel across rows; still sequential within each row};
+  \end{tikzpicture}
+
+  \vspace{0.35em}
+  \small Row lengths and stream boundaries allow the independently encoded rows to be concatenated and reconstructed in original order.
+\end{frame}
+
+\begin{frame}{O2: Four Changes in the Coding Path}
+  \centering
+  \resizebox{0.98\textwidth}{!}{%
+  \begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,minimum width=2.65cm,minimum height=1.05cm,align=center,font=\small},
+    arr/.style={-{Stealth[length=5pt]},thick},
+  ]
+    \node[box,fill=blue!10] (vec) at (0,2.1) {\textbf{vectorize}\\$[B,|V'|] \rightarrow [B,3]$\\target intervals};
+    \node[box,fill=mLightBrown!15] (compile) at (3.45,2.1) {\textbf{compile}\\Numba integer\\range updates};
+    \node[box,fill=mDarkTeal!12] (streams) at (6.9,2.1) {\textbf{multistream}\\one $(low,high)$\\state per row};
+    \node[box,fill=green!12] (packed) at (10.35,2.1) {\textbf{pack}\\write bytes directly,\\not Python bit lists};
+    \draw[arr] (vec) -- (compile);
+    \draw[arr] (compile) -- (streams);
+    \draw[arr] (streams) -- (packed);
+
+    \node[anchor=east,font=\scriptsize\bfseries] at (-0.35,0.35) {GPU};
+    \node[anchor=east,font=\scriptsize\bfseries] at (-0.35,-0.55) {CPU};
+    \foreach \i/\x in {0/0,1/3.0,2/6.0,3/9.0} {
+      \node[draw,fill=blue!14,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize] at (\x+1.3,0.35) {infer step $t+\i$};
+    }
+    \node[draw=none,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize,text=black!45] at (1.3,-0.55) {idle};
+    \foreach \i/\x in {0/3.0,1/6.0,2/9.0} {
+      \node[draw,fill=mDarkTeal!14,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize] at (\x+1.3,-0.55) {encode step $t+\i$};
+    }
+    \draw[decorate,decoration={brace,amplitude=4pt},thick,mDarkTeal] (3.0,-1.05) -- (11.65,-1.05);
+    \node[font=\scriptsize,mDarkTeal] at (7.3,-1.42) {background thread overlaps CPU coding with the next GPU call};
+  \end{tikzpicture}
+  }
+
+  \vspace{0.35em}
+  \small Pipelining is safe because compression already knows the next file token: inference for step $t+1$ does not wait for step $t$'s bits to be emitted.
+\end{frame}
+
+\begin{frame}{O3: Move Target-Interval Selection into the Backend}
+  \centering
+  \resizebox{0.98\textwidth}{!}{%
+  \begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,minimum height=0.78cm,align=center,font=\small},
+    arr/.style={-{Stealth[length=5pt]},thick},
+  ]
+    \node[font=\small\bfseries] at (0,2.75) {Baseline: dense scores cross the boundary};
+    \node[box,fill=red!10,minimum width=2.8cm] (dense) at (0,1.75) {$B\times |V'|$ logits\\or probabilities};
+    \node[box,fill=red!10,minimum width=3.2cm] (host) at (4.0,1.75) {host softmax + counts\\CDF + target lookup};
+    \node[box,fill=red!10,minimum width=2.5cm] (coder) at (8.0,1.75) {range-coder\\update};
+    \draw[arr] (dense) -- node[above,font=\tiny] {$O(B|V'|)$ floats} (host);
+    \draw[arr] (host) -- (coder);
+
+    \node[font=\small\bfseries] at (0,-0.1) {O3: return only what the encoder consumes};
+    \node[box,fill=green!12,minimum width=3.35cm] (backend) at (0,-1.15) {backend: mask + softmax\\counts + prefix sum};
+    \node[box,fill=green!12,minimum width=3.0cm] (record) at (4.0,-1.15) {select known target\\$(\ell,h,T,p_{target})$};
+    \node[box,fill=mDarkTeal!12,minimum width=2.5cm] (coder2) at (8.0,-1.15) {range-coder\\update};
+    \draw[arr] (backend) -- (record);
+    \draw[arr] (record) -- node[above,font=\tiny] {$O(B)$ records} (coder2);
+
+    \node[draw,rounded corners=2pt,fill=mLightBrown!12,align=left,font=\small,text width=3.4cm,minimum height=3.2cm] at (11.05,0.3)
+      {\textbf{Important}\\[0.35em]
+       The $O(|V'|)$ softmax / prefix work moves into the backend; it still occurs.\\[0.5em]
+       Host transfer and host-side CDF construction are removed.};
+  \end{tikzpicture}
+  }
+
+  \vspace{0.35em}
+  \small The encoder knows the true token index, so the backend can select its quantized interval before returning to the host.
+\end{frame}
+
+\begin{frame}{Encoder and Decoder Have Different Information}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Compression: $x_{t+1}$ is known}
+        \begin{enumerate}
+          \item Compute and record honest scores.
+          \item Select $x_{t+1}$'s interval.
+          \item Encode it, then append $x_{t+1}$.
+        \end{enumerate}
+      \end{block}
+      \vspace{0.4em}
+      \centering
+      \textcolor{mDarkTeal}{O1 teacher forcing: applicable}\par
+      \textcolor{mDarkTeal}{O3 target record: applicable}
+    \end{column}
+    \hfill
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Decompression: $x_{t+1}$ is unknown}
+        \begin{enumerate}
+          \item Recreate scores from decoded prefix.
+          \item Find the interval containing code value.
+          \item Discover and append $x_{t+1}$.
+        \end{enumerate}
+      \end{block}
+      \vspace{0.4em}
+      \centering
+      \textcolor{red!70!black}{cannot force an unknown token}\par
+      \textcolor{red!70!black}{cannot receive only its interval}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.9em}
+  \begin{block}{Shared invariant}
+    The tokenizer, model, context policy, global mask, softmax, and integer quantization must reproduce identical intervals. O2's independent row coders preserve this invariant on both sides.
+  \end{block}
 \end{frame}

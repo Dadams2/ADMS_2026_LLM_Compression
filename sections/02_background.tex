@@ -87,12 +87,102 @@
   \small Frequent symbols get shorter codewords; rare symbols pay more \parencite{Huffman1952AMF}.
 \end{frame}
 
-\begin{frame}{Arithmetic Coding: Compressing ``hello''}
-  \centering
-  \includegraphics[width=0.94\textwidth,height=0.76\textheight,keepaspectratio]{figures/tikz/ac_interval.pdf}
+\begin{frame}{Arithmetic Coding: Three Successive Updates}
+  \only<1>{%
+    \centering
+    \begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily]
+      \node[font=\bfseries] at (5.5,5.15) {Step 1: encode the observed symbol \texttt{A}};
+      \node[font=\small] at (1.2,4.45) {message};
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!18,minimum width=0.9cm] at (2.25,4.45) {\texttt{A}};
+      \node[draw,rounded corners=2pt,fill=black!4,minimum width=0.9cm] at (3.25,4.45) {\texttt{B}};
+      \node[draw,rounded corners=2pt,fill=black!4,minimum width=0.9cm] at (4.25,4.45) {\texttt{A}};
 
-  \vspace{0.2em}
-  \small The message is represented by a final interval; any binary fraction inside that interval decodes to the same text \parencite{rissanenArithmeticCoding1979}.
+      \node[anchor=east,font=\small] at (0.8,3.25) {current $[0,1)$};
+      \fill[blue!18] (1.0,2.8) rectangle (7.0,3.7);
+      \fill[orange!20] (7.0,2.8) rectangle (10.0,3.7);
+      \fill[red!16] (10.0,2.8) rectangle (11.0,3.7);
+      \draw[thick] (1.0,2.8) rectangle (11.0,3.7);
+      \draw[very thick,mDarkTeal] (1.0,2.72) rectangle (7.0,3.78);
+      \node at (4.0,3.25) {\texttt{A}: 0.60};
+      \node at (8.5,3.25) {\texttt{B}: 0.30};
+      \node[font=\scriptsize] at (10.5,3.25) {\texttt{C}: .10};
+      \node[font=\tiny] at (1.0,2.55) {0};
+      \node[font=\tiny] at (7.0,2.55) {0.60};
+      \node[font=\tiny] at (10.0,2.55) {0.90};
+      \node[font=\tiny] at (11.0,2.55) {1};
+
+      \draw[-{Stealth[length=6pt]},thick,mDarkTeal] (4.0,2.35) -- (4.0,1.65);
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!10,minimum width=6.0cm,minimum height=0.75cm] at (4.0,1.2)
+        {keep \texttt{A}'s subinterval: $[0,0.60)$};
+      \node[align=left,font=\small,text width=3.2cm] at (9.35,1.2)
+        {Likely symbols keep wider intervals\\$\Rightarrow$ fewer bits.};
+    \end{tikzpicture}
+  }
+  \only<2>{%
+    \centering
+    \begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily]
+      \node[font=\bfseries] at (5.5,5.15) {Step 2: rescale the next distribution inside $[0,0.60)$};
+      \node[font=\small] at (1.2,4.45) {message};
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!8,minimum width=0.9cm] at (2.25,4.45) {\texttt{A}};
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!18,minimum width=0.9cm] at (3.25,4.45) {\texttt{B}};
+      \node[draw,rounded corners=2pt,fill=black!4,minimum width=0.9cm] at (4.25,4.45) {\texttt{A}};
+
+      \node[anchor=east,font=\small] at (0.8,3.25) {current $[0,.60)$};
+      \fill[blue!18] (1.0,2.8) rectangle (3.0,3.7);
+      \fill[orange!20] (3.0,2.8) rectangle (10.0,3.7);
+      \fill[red!16] (10.0,2.8) rectangle (11.0,3.7);
+      \draw[thick] (1.0,2.8) rectangle (11.0,3.7);
+      \draw[very thick,mDarkTeal] (3.0,2.72) rectangle (10.0,3.78);
+      \node at (2.0,3.25) {\texttt{A}: .20};
+      \node at (6.5,3.25) {\texttt{B}: 0.70};
+      \node[font=\scriptsize] at (10.5,3.25) {\texttt{C}: .10};
+      \node[font=\tiny] at (1.0,2.55) {0};
+      \node[font=\tiny] at (3.0,2.55) {0.12};
+      \node[font=\tiny] at (10.0,2.55) {0.54};
+      \node[font=\tiny] at (11.0,2.55) {0.60};
+
+      \draw[-{Stealth[length=6pt]},thick,mDarkTeal] (6.5,2.35) -- (6.5,1.65);
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!10,minimum width=6.0cm,minimum height=0.75cm] at (6.5,1.2)
+        {keep \texttt{B}'s subinterval: $[0.12,0.54)$};
+      \node[align=center,font=\small] at (6.0,0.45)
+        {The distribution may change at every position because the prefix has changed.};
+    \end{tikzpicture}
+  }
+  \only<3>{%
+    \centering
+    \begin{tikzpicture}[x=1cm,y=1cm,font=\sffamily]
+      \node[font=\bfseries] at (5.5,5.15) {Step 3: encode \texttt{A}, then choose any point in the final interval};
+      \node[font=\small] at (1.2,4.45) {message};
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!8,minimum width=0.9cm] at (2.25,4.45) {\texttt{A}};
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!8,minimum width=0.9cm] at (3.25,4.45) {\texttt{B}};
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!18,minimum width=0.9cm] at (4.25,4.45) {\texttt{A}};
+
+      \node[anchor=east,font=\small] at (0.8,3.25) {current $[.12,.54)$};
+      \fill[blue!18] (1.0,2.8) rectangle (6.0,3.7);
+      \fill[orange!20] (6.0,2.8) rectangle (8.0,3.7);
+      \fill[red!16] (8.0,2.8) rectangle (11.0,3.7);
+      \draw[thick] (1.0,2.8) rectangle (11.0,3.7);
+      \draw[very thick,mDarkTeal] (1.0,2.72) rectangle (6.0,3.78);
+      \node at (3.5,3.25) {\texttt{A}: 0.50};
+      \node at (7.0,3.25) {\texttt{B}: .20};
+      \node at (9.5,3.25) {\texttt{C}: .30};
+      \node[font=\tiny] at (1.0,2.55) {0.12};
+      \node[font=\tiny] at (6.0,2.55) {0.33};
+      \node[font=\tiny] at (8.0,2.55) {0.414};
+      \node[font=\tiny] at (11.0,2.55) {0.54};
+
+      \node[draw,rounded corners=2pt,fill=mDarkTeal!10,minimum width=4.4cm,minimum height=0.75cm] at (3.5,1.55)
+        {final interval $[0.12,0.33)$};
+      \node[draw,rounded corners=2pt,fill=mLightBrown!16,minimum width=4.4cm,minimum height=0.75cm] at (8.5,1.55)
+        {$0.01_2=0.25$ lies inside};
+      \draw[-{Stealth[length=6pt]},thick] (5.75,1.55) -- (6.25,1.55);
+      \node[align=center,font=\small] at (6.0,0.55)
+        {A real integer range coder emits stable leading bits while renormalizing.};
+    \end{tikzpicture}
+  }
+
+  \vspace{-0.2em}
+  \small Any binary fraction inside the final interval decodes to the same message \parencite{rissanenArithmeticCoding1979}.
 \end{frame}
 
 \begin{frame}{Language Modeling Objective}
@@ -113,7 +203,45 @@
   Next-token prediction trains the same conditional probabilities an entropy coder needs.
 \end{frame}
 
-\begin{frame}{LLM as Next-Token Prediction}
+\begin{frame}{From Logits to a Probability Distribution}
+  \centering
+  \resizebox{0.98\textwidth}{!}{%
+  \begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,minimum height=0.74cm,align=center,font=\small},
+    arr/.style={-{Stealth[length=5pt]},thick},
+  ]
+    \node[box,fill=blue!10,minimum width=2.45cm] (prefix) at (0,2.25) {prefix\\\texttt{the cat}};
+    \node[box,fill=mLightBrown!16,minimum width=2.1cm] (model) at (3.0,2.25) {LLM\\final hidden state};
+    \node[box,fill=black!4,minimum width=2.3cm] (logits) at (6.0,2.25) {raw logits $z$\\$3.2,\ 2.1,\ 1.0,\ 0.2$};
+    \node[box,fill=red!9,minimum width=2.25cm] (mask) at (8.9,2.25) {global mask\\remove \texttt{quantum}};
+    \node[box,fill=green!12,minimum width=2.55cm] (softmax) at (12.0,2.25) {softmax\\$69\%,\ 23\%,\ 8\%$};
+    \draw[arr] (prefix) -- (model);
+    \draw[arr] (model) -- (logits);
+    \draw[arr] (logits) -- (mask);
+    \draw[arr] (mask) -- (softmax);
+
+    \node[anchor=west,font=\scriptsize] at (4.9,1.15) {\texttt{sat}: 3.2};
+    \node[anchor=west,font=\scriptsize] at (4.9,0.75) {\texttt{slept}: 2.1};
+    \node[anchor=west,font=\scriptsize] at (4.9,0.35) {\texttt{quickly}: 1.0};
+    \node[anchor=west,font=\scriptsize,text=black!45] at (4.9,-0.05) {\texttt{quantum}: 0.2};
+
+    \fill[blue!65] (10.75,0.9) rectangle (12.82,1.2);
+    \fill[mDarkTeal!70] (10.75,0.45) rectangle (11.44,0.75);
+    \fill[mLightBrown!75] (10.75,0.0) rectangle (10.99,0.3);
+    \node[anchor=west,font=\scriptsize] at (12.95,1.05) {\texttt{sat} 0.69};
+    \node[anchor=west,font=\scriptsize] at (11.57,0.60) {\texttt{slept} 0.23};
+    \node[anchor=west,font=\scriptsize] at (11.12,0.15) {\texttt{quickly} 0.08};
+
+    \node[draw,rounded corners=2pt,fill=mDarkTeal!7,align=center,font=\small,minimum width=8.7cm,minimum height=0.82cm] at (6.0,-1.05)
+      {$p_i = \exp(z_i)\,/\,\sum_{j\in V'}\exp(z_j)$ \qquad probabilities are positive and sum to 1};
+  \end{tikzpicture}
+  }
+
+  \vspace{0.2em}
+  \small Logits are unrestricted scores, not probabilities. Mask first, then renormalize over the stored allowed vocabulary $V'$.
+\end{frame}
+
+\begin{frame}{One LLM-Guided Compression Step}
   \centering
   \resizebox{\textwidth}{!}{%
   \begin{tikzpicture}[
@@ -122,30 +250,29 @@
                 minimum height=0.85cm, align=center, font=\small},
     arr/.style={-{Stealth[length=5pt]}, thick},
   ]
-    \node[box, fill=blue!12, minimum width=2.55cm] (input) {Input tokens\\\texttt{the celtics are}};
-    \node[box, fill=mLightBrown!20, minimum width=2.35cm, right=of input] (model) {Language model\\e.g., GPT};
-    \node[box, fill=green!14, minimum width=3.0cm, right=of model] (dist) {Predicted distribution\\
-      \texttt{playing}: 0.34\\
-      \texttt{favored}: 0.18\\
-      \texttt{in}: 0.08\\
-      \ldots};
-    \node[box, fill=orange!16, minimum width=2.7cm, right=of dist] (coder) {Arithmetic encoder\\actual token = \texttt{playing}};
-    \node[box, fill=red!10, minimum width=2.45cm, right=of coder] (bits) {Compressed bitstream\\\texttt{101101...}};
+    \node[box, fill=blue!12, minimum width=2.45cm] (input) {Prefix $x_{\leq t}$\\\texttt{the cat}};
+    \node[box, fill=mLightBrown!20, minimum width=2.15cm, right=of input] (model) {Language model\\logits $z_t$};
+    \node[box, fill=green!14, minimum width=2.75cm, right=of model] (dist) {mask + softmax\\probabilities $p_t$};
+    \node[box, fill=orange!16, minimum width=2.75cm, right=of dist] (quant) {quantize to counts\\cumulative intervals};
+    \node[box, fill=mDarkTeal!14, minimum width=2.65cm, right=of quant] (coder) {range update\\for true $x_{t+1}$};
+    \node[box, fill=red!10, minimum width=2.2cm, right=of coder] (bits) {compressed bits\\\texttt{101...}};
 
     \draw[arr] (input) -- (model);
     \draw[arr] (model) -- (dist);
-    \draw[arr] (dist) -- (coder);
+    \draw[arr] (dist) -- (quant);
+    \draw[arr] (quant) -- (coder);
     \draw[arr] (coder) -- (bits);
 
     \node[font=\scriptsize, align=center] at ($(model.south)+(0,-0.55)$)
-      {predicts $P(\text{token}\mid\text{context})$};
-    \node[font=\scriptsize, align=center] at ($(coder.south)+(0,-0.65)$)
-      {encodes the observed next token\\using the predicted distribution};
+      {the LLM does not emit bits};
+    \node[draw,rounded corners=2pt,fill=mDarkTeal!10,font=\scriptsize,below=0.62cm of coder] (truth)
+      {known file token $x_{t+1}=\texttt{sat}$};
+    \draw[-{Stealth[length=5pt]},thick,mDarkTeal] (truth) -- (coder);
   \end{tikzpicture}
   }
 
 \vspace{0.6em}
-\small Better predictions reduce bits; every token still requires deterministic model replay.
+\small After coding, append the observed token to form the next prefix. Better predictions reduce bits; decode must deterministically recreate every distribution.
 \end{frame}
 
 \begin{frame}{Compression Is Not Ordinary Text Generation}

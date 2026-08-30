@@ -5,90 +5,112 @@
 \section{Motivation}
 
 \begin{frame}{Text Is a First-Class Analytics Datatype}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.48\textwidth}
-      \begin{block}{Amazon Redshift fleet}
-        \centering
-        {\Huge 52.1\%}\\[0.4em]
-        \small Stored columns observed as \texttt{varchar}\\[-0.1em]
-        \scriptsize\parencite{vanrenenWhyTPCNot2024}
-      \end{block}
-    \end{column}
-    \hfill
-    \begin{column}{0.48\textwidth}
-      \begin{block}{Snowflake workloads}
-        \centering
-        {\Huge 34\%}\\[0.4em]
-        \small Aggregation inputs reported as text columns\\[-0.1em]
-        \scriptsize\parencite{szlangWorkloadInsightsSnowflake2025}
-      \end{block}
-    \end{column}
-  \end{columns}
-
-  \vspace{1.0em}
-  \begin{itemize}
-    \item Storage is expensive 
-    \item Data is stored for backup or compliance
-    \item Most data is \textbf{cold} the moment it is created
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Storage Codec Question: Current Practice}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.50\textwidth}
-      \textbf{Block-based compression}
-      \begin{itemize}
-        \item Compress independent byte blocks
-        \item Cheap CPU path at ingest and scan time
-        \item Mature formats: \codec{zstd}, FSST, dictionary codecs \parencite{zstd,fsst}
-        \item Good engineering fit for DBMS storage pages
-      \end{itemize}
-    \end{column}
-    \hfill
-    \begin{column}{0.44\textwidth}
-      \begin{block}{Why it works operationally}
-        \centering
-        \Large fast, cheap, predictable
-
-        \vspace{0.6em}
-        \normalsize
-        The codec adds little latency and keeps decompression local to the block being read.
-      \end{block}
-    \end{column}
-  \end{columns}
-
-  \vspace{0.8em}
   \centering
-  \small The tradeoff: classical codecs leave language-level redundancy on the table.
+  \begin{tikzpicture}[
+    stat/.style={draw,rounded corners=2pt,minimum width=5.25cm,minimum height=2.1cm,align=center},
+    stage/.style={draw,rounded corners=2pt,minimum width=3.2cm,minimum height=0.8cm,align=center,font=\small},
+    arr/.style={-{Stealth[length=5pt]},thick},
+  ]
+    \node[stat,fill=blue!9] at (0,2.0)
+      {{\fontsize{30}{32}\selectfont\bfseries 52.1\%}\\[0.25em]
+       \small stored columns observed as \texttt{varchar}\\[-0.1em]
+       \scriptsize Amazon Redshift fleet \parencite{vanrenenWhyTPCNot2024}};
+    \node[stat,fill=mDarkTeal!9] at (6.2,2.0)
+      {{\fontsize{30}{32}\selectfont\bfseries 34\%}\\[0.25em]
+       \small aggregation inputs reported as text\\[-0.1em]
+       \scriptsize Snowflake workloads \parencite{szlangWorkloadInsightsSnowflake2025}};
+
+    \node[stage,fill=black!4] (create) at (-0.6,-0.55) {created once};
+    \node[stage,fill=mLightBrown!12] (retain) at (3.1,-0.55) {retained for years};
+    \node[stage,fill=red!8] (cost) at (6.8,-0.55) {storage + movement cost};
+    \draw[arr] (create) -- (retain);
+    \draw[arr] (retain) -- (cost);
+  \end{tikzpicture}
+
+  \vspace{0.55em}
+  \small Cold text is common enough that compression economics matter at fleet scale.
 \end{frame}
 
-\begin{frame}{Storage Codec Question: Language Models as Compressors}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.52\textwidth}
-      \textbf{Prediction becomes compression}
-      \begin{itemize}
-        \item Better next-token probabilities mean fewer encoded bits
-        \item Chinchilla 70B beats domain-specific compressors on several modalities \parencite{deletangLanguageModelingCompression2024}
-        \item LLMZip and later work show strong text ratios \parencite{llmzip,lossless_data_compression_llm}
-      \end{itemize}
-    \end{column}
-    \hfill
-    \begin{column}{0.42\textwidth}
-      \begin{block}{Systems catch}
-        \centering
-        \Large slow unless engineered
+\begin{frame}{Why Classical Codecs Win Today}
+  \centering
+  \begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,minimum height=1.0cm,align=center,font=\small},
+    badge/.style={draw,rounded corners=2pt,minimum width=2.25cm,minimum height=0.72cm,align=center,font=\small\bfseries},
+    arr/.style={-{Stealth[length=6pt]},thick},
+  ]
+    \node[box,fill=blue!9,minimum width=2.8cm] (page) at (0,1.55) {DBMS text page};
+    \node[box,fill=mLightBrown!15,minimum width=4.2cm] (codec) at (4.0,1.55)
+      {block codec\\\codec{zstd} \quad FSST \quad dictionary};
+    \node[box,fill=mDarkTeal!11,minimum width=2.8cm] (block) at (8.0,1.55) {compressed block};
+    \draw[arr] (page) -- (codec);
+    \draw[arr] (codec) -- (block);
 
-        \vspace{0.6em}
-        \normalsize
-        Encode and decode replay the same model calls and entropy-coder updates.
-      \end{block}
-    \end{column}
-  \end{columns}
+    \node[badge,fill=green!10] at (1.35,-0.2) {fast};
+    \node[badge,fill=blue!8] at (4.0,-0.2) {cheap};
+    \node[badge,fill=mDarkTeal!9] at (6.65,-0.2) {predictable};
+    \node[font=\scriptsize] at (4.0,-1.0)
+      {independent blocks keep encode and decode local \parencite{zstd,fsst}};
+  \end{tikzpicture}
 
-  \vspace{0.9em}
-  \begin{block}{Central systems question}
-    Under which combinations of inference engine, hardware platform, and entropy-coding design can LLM compression become economically viable for analytical text storage?
+  \vspace{0.7em}
+  \begin{block}{Tradeoff}
+    \centering
+    Excellent systems fit; limited use of language-level structure.
   \end{block}
+\end{frame}
+
+\begin{frame}{Why Use a Language Model?}
+  \centering
+  \begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,minimum height=0.95cm,align=center,font=\small},
+    arr/.style={-{Stealth[length=6pt]},thick},
+  ]
+    \node[box,fill=blue!9,minimum width=2.6cm] (prefix) at (0,2.0) {text prefix\\$x_{<t}$};
+    \node[box,fill=mLightBrown!15,minimum width=2.6cm] (model) at (3.3,2.0) {language model\\$P(x_t\mid x_{<t})$};
+    \node[box,fill=mDarkTeal!11,minimum width=2.8cm] (coder) at (6.7,2.0) {entropy coder\\$-\log_2 p(x_t)$ bits};
+    \node[box,fill=red!8,minimum width=2.35cm] (bits) at (9.9,2.0) {bitstream};
+    \draw[arr] (prefix) -- (model);
+    \draw[arr] (model) -- (coder);
+    \draw[arr] (coder) -- (bits);
+
+    \node[draw,rounded corners=2pt,fill=green!9,minimum width=4.8cm,minimum height=1.25cm,align=center,font=\small] at (2.15,-0.1)
+      {\textbf{ratio upside}\\predictable text gets fewer bits};
+    \node[draw,rounded corners=2pt,fill=red!8,minimum width=4.8cm,minimum height=1.25cm,align=center,font=\small] at (7.85,-0.1)
+      {\textbf{systems cost}\\model replay at encode + decode};
+  \end{tikzpicture}
+
+  \vspace{0.55em}
+  \small Neural predictors expose language-level redundancy that classical block codecs miss \parencite{deletangLanguageModelingCompression2024,llmzip,lossless_data_compression_llm}.
+\end{frame}
+
+\begin{frame}{Chinchilla Compresses More as the Model Scales}
+  \centering
+  \small
+  \textbf{Raw compression rate (\%)} \quad compressed size / original size; lower is better
+
+  \vspace{0.2em}
+  \renewcommand{\arraystretch}{1.0}
+  \setlength{\tabcolsep}{10pt}
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Compressor} & \textbf{enwik9} & \textbf{ImageNet} & \textbf{LibriSpeech} \\
+    \midrule
+    gzip            & 48.1 & 68.6 & 38.5 \\
+    PNG             & 80.6 & 61.7 & 37.6 \\
+    FLAC            & 88.9 & 60.9 & 30.3 \\
+    \midrule
+    Chinchilla 1B   & 11.3 & 62.2 & 24.9 \\
+    Chinchilla 7B   & 10.2 & 54.7 & 23.6 \\
+    \rowcolor{mDarkTeal!12}
+    \textbf{Chinchilla 70B} & \textbf{8.3} & \textbf{48.0} & \textbf{21.0} \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.2em}
+  \footnotesize \textbf{\textcolor{mDarkTeal}{Takeaway:}} A text-trained LLM can compress image and audio bytes.
+
+  \vspace{0.1em}
+  \scriptsize 1~GB datasets; 2,048-byte chunks; model weights excluded. Adjusted Chinchilla rates are 211--14,048\% \parencite{deletangLanguageModelingCompression2024}.
 \end{frame}
 
 \begin{frame}[standout]
