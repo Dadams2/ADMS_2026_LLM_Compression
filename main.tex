@@ -7,6 +7,8 @@
 
 % ---------- Theme -------------------------------------------
 \usetheme[progressbar=frametitle, block=fill, numbering=fraction]{metropolis}
+\setbeamertemplate{section in toc}[sections numbered]
+\setbeamertemplate{subsection in toc}[subsections numbered]
 
 % ---------- Fonts -------------------------------------------
 \usepackage[T1]{fontenc}
@@ -89,6 +91,116 @@
 \begin{frame}{Talk Roadmap}
   \tableofcontents
 \end{frame}
+
+\begin{frame}
+  \frametitle{A summary of this Talk}
+  \centering
+  \definecolor{codecHuf}{HTML}{17BECF}
+  \definecolor{codecLZ}{HTML}{D62728}
+  \definecolor{codecSnappy}{HTML}{8C564B}
+  \definecolor{codecOnPairSixteen}{HTML}{9467BD}
+  \definecolor{codecFSST}{HTML}{7F7F7F}
+  \definecolor{codecZstd}{HTML}{E377C2}
+  \definecolor{codecToken}{HTML}{FF7F0E}
+  \definecolor{codecOnPair}{HTML}{2CA02C}
+  \definecolor{codecLLM}{RGB}{34,74,138}
+  \begin{tikzpicture}[
+    every node/.append style={text=black},
+    codec label/.style={font=\scriptsize, fill=white, rounded corners=1.5pt,
+      inner sep=1.5pt, line width=0.45pt},
+  ]
+    \begin{semilogyaxis}[
+      width=0.96\textwidth,
+      height=0.68\textheight,
+      xmin=1.1, xmax=7.55,
+      ymin=0.001, ymax=2000,
+      xlabel={Compression ratio},
+      ylabel={Compression throughput (MB/s)},
+      xtick={1,2,3,4,5,6,7},
+      ytick={0.001,0.01,0.1,1,10,100,1000},
+      yticklabels={0.001,0.01,0.1,1,10,100,1000},
+      grid=major,
+      grid style={draw=black!15},
+      axis line style={black!70},
+      tick label style={font=\scriptsize},
+      label style={font=\small},
+      clip=false,
+    ]
+      % Encoding measurements reconstructed from Schmidt et al., Figure 13b.
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecHuf, fill=codecHuf]
+        coordinates {(1.3898,1423.6)};
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecLZ, fill=codecLZ]
+        coordinates {(1.8306,675.2)};
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecSnappy, fill=codecSnappy]
+        coordinates {(1.8875,714.7)};
+      \addplot[only marks, mark=*, mark size=1.7pt,
+               draw=codecOnPairSixteen, fill=codecOnPairSixteen]
+        coordinates {(2.2108,79.1)};
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecFSST, fill=codecFSST]
+        coordinates {(2.0846,253.3)};
+      % \addplot[only marks, mark=diamond*, mark size=2.1pt, draw=black!75, fill=black!75]
+      %   coordinates {(2.72,104.93)};
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecZstd, fill=codecZstd]
+        coordinates {(2.8594,546.7)};
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecToken, fill=codecToken]
+        coordinates {(1.3804,323.9)};
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecOnPair, fill=codecOnPair]
+        coordinates {(2.5945,94.2)};
+
+      % Color-matched leaders reproduce the labeling style of the source figure.
+      \draw[codecHuf] (axis cs:1.3898,1423.6) -- (axis cs:1.48,1650)
+        node[codec label, draw=codecHuf, text=codecHuf, anchor=south west] {Huf};
+      \draw[codecLZ] (axis cs:1.8306,675.2) -- (axis cs:1.58,480)
+        node[codec label, draw=codecLZ, text=codecLZ, anchor=east] {LZ4};
+      \draw[codecSnappy] (axis cs:1.8875,714.7) -- (axis cs:2.12,1150)
+        node[codec label, draw=codecSnappy, text=codecSnappy, anchor=west] {Snappy};
+      \draw[codecToken] (axis cs:1.5804,323.9) -- (axis cs:1.2,150)
+        node[codec label, draw=codecToken, text=codecToken, anchor=west] {Token};
+      \draw[codecFSST] (axis cs:2.0846,253.3) -- (axis cs:2.34,380)
+        node[codec label, draw=codecFSST, text=codecFSST, anchor=west] {FSST};
+      \draw[codecZstd] (axis cs:2.8594,546.7) -- (axis cs:3.12,1050)
+        node[codec label, draw=codecZstd, text=codecZstd, anchor=west] {Zstd};
+      \draw[codecOnPairSixteen] (axis cs:2.2108,79.1) -- (axis cs:1.48,47)
+        node[codec label, draw=codecOnPairSixteen, text=codecOnPairSixteen,
+             anchor=west] {OnPair16};
+      \draw[codecOnPair] (axis cs:2.5945,94.2) -- (axis cs:2.25,25)
+        node[codec label, draw=codecOnPair, text=codecOnPair, anchor=west] {OnPair+};
+      % \draw[black!75] (axis cs:2.93,104.93) -- (axis cs:3.08,18)
+      %   node[codec label, draw=black!75, text=black!75, anchor=west] {OptFSST};
+      % \draw[codecHuf] (axis cs:2.0971,258.8) -- (axis cs:3.65,650)
+      %   node[codec label, draw=codecHuf, text=codecHuf, anchor=west] {Token+Huf};
+      % \draw[codecLZ] (axis cs:2.1816,247.3) -- (axis cs:3.65,250)
+      %   node[codec label, draw=codecLZ, text=codecLZ, anchor=west] {Token+LZ4};
+      % \draw[codecSnappy] (axis cs:2.1606,236.8) -- (axis cs:3.65,70)
+      %   node[codec label, draw=codecSnappy, text=codecSnappy, anchor=west] {Token+Snappy};
+      % \draw[codecZstd] (axis cs:2.4965,213.3) -- (axis cs:4.85,650)
+      %   node[codec label, draw=codecZstd, text=codecZstd, anchor=west] {Token+Zstd};
+      % \draw[codecOnPair] (axis cs:2.4950,85.5) -- (axis cs:4.85,180)
+      %   node[codec label, draw=codecOnPair, text=codecOnPair, anchor=west] {Token+OnPair+};
+      % Our end-to-end text8 measurements, Qwen2.5-0.5B on an A100.
+      \draw[codecLLM, very thick, -{Latex[length=2mm]}]
+        (axis cs:7.0482,0.0018) --
+        node[pos=0.52, xshift=5mm, text=red!80!black, fill=white,
+             inner sep=1.5pt, font=\small\bfseries] {$18.84\times$}
+        (axis cs:7.0492,0.0345);
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecLLM, fill=codecLLM]
+        coordinates {(7.0482,0.0018)};
+      \addplot[only marks, mark=*, mark size=1.7pt, draw=codecLLM, fill=codecLLM]
+        coordinates {(7.0492,0.0345)};
+      \draw[codecLLM] (axis cs:7.0482,0.0018) -- (axis cs:6.72,0.0024)
+        node[codec label, draw=codecLLM, text=codecLLM, anchor=east, align=right]
+        {Unoptimized LLM\\0.0018 MB/s};
+      \draw[codecLLM] (axis cs:7.0492,0.0345) -- (axis cs:6.92,0.055)
+        node[codec label, draw=codecLLM, text=codecLLM, anchor=south east, align=right]
+        {Optimized LLM \\0.0345 MB/s};
+    \end{semilogyaxis}
+  \end{tikzpicture}
+
+  \vspace{-0.45em}
+  \tiny\textcolor{codecOnPair}{\textbf{OnPair+ presentation:} Tue, Sep 1, 15:45--17:15, Grand Ballroom E -- Research 13: LLMs for Data Engineering}\par
+  \tiny CPU: Schmidt et al.; OptFSST: mean over 92 columns; LLM: Qwen2.5-0.5B/A100/\texttt{text8}. Cross-system comparison. \parencite{schmidtAcceleratingStringHeavy2026,chehaidarOptFSST2026}
+\end{frame}
+
 
 \input{sections/01_motivation}
 \input{sections/02_background}
