@@ -22,7 +22,7 @@
 
     \node[stage,fill=black!4] (create) at (-0.6,-0.55) {created once};
     \node[stage,fill=mLightBrown!12] (retain) at (3.1,-0.55) {retained for years};
-    \node[stage,fill=red!8] (cost) at (6.8,-0.55) {storage + movement cost};
+    \node[stage,fill=red!8] (cost) at (6.9,-0.55) {storage + movement cost};
     \draw[arr] (create) -- (retain);
     \draw[arr] (retain) -- (cost);
   \end{tikzpicture}
@@ -52,11 +52,11 @@
       {independent blocks keep encode and decode local \parencite{zstd,fsst}};
   \end{tikzpicture}
 
-  \vspace{0.7em}
-  \begin{block}{Tradeoff}
-    \centering
-    Excellent systems fit; limited use of language-level structure.
-  \end{block}
+  % \vspace{0.7em}
+  % \begin{block}{Tradeoff}
+  %   \centering
+  %   Excellent systems fit; limited use of language-level structure.
+  % \end{block}
 \end{frame}
 
 \begin{frame}{Why Use a Language Model?}
