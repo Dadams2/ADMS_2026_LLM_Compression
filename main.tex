@@ -86,7 +86,7 @@
 \begin{document}
 % ============================================================
 
-\begin{frame}[plain]
+\begin{frame}[plain,shrink=4]
   \titlepage
   \begin{tikzpicture}[remember picture,overlay]
     \node[anchor=south east, xshift=-0.6cm, yshift=0.45cm] at (current page.south east) {%
@@ -96,6 +96,12 @@
   \end{tikzpicture}
 \end{frame}
 
+\definecolor{codecFSST}{HTML}{7F7F7F}
+\definecolor{codecZstd}{HTML}{E377C2}
+\definecolor{codecOnPair}{HTML}{2CA02C}
+\definecolor{codecLLM}{RGB}{34,74,138}
+\definecolor{codecBase}{RGB}{188,74,60}
+\definecolor{codecVLLM}{RGB}{220,160,52}
 
 \begin{frame}
   \frametitle{A summary of this Talk}
@@ -202,8 +208,9 @@
   \end{tikzpicture}
 
   \vspace{-0.45em}
-  \tiny\textcolor{codecOnPair}{\textbf{OnPair+ presentation:} Tue, Sep 1, 15:45--17:15, Grand Ballroom E -- Research 13: LLMs for Data Engineering}\par
-  \tiny CPU: Schmidt et al.; OptFSST: mean over 92 columns; LLM: Qwen2.5-0.5B/A100/\texttt{text8}. Cross-system comparison. \parencite{schmidtAcceleratingStringHeavy2026,chehaidarOptFSST2026}
+  % \tiny\textcolor{codecOnPair}{\textbf{OnPair+ presentation:} Tue, Sep 1, 15:45--17:15, Grand Ballroom E -- Research 13: LLMs for Data Engineering}\par
+   \tiny CPU points reconstructed from Schmidt et al.; LLM: Qwen2.5-0.5B, A100, \texttt{text8}. Cross-system encode comparison; thread counts and sample sizes differ. \parencite{schmidtAcceleratingStringHeavy2026,chehaidarOptFSST2026}
+  % \tiny CPU: Schmidt et al.; OptFSST: mean over 92 columns; LLM: Qwen2.5-0.5B/A100/\texttt{text8}. Cross-system comparison. \parencite{schmidtAcceleratingStringHeavy2026,chehaidarOptFSST2026}
 \end{frame}
 
 \begin{frame}{Talk Roadmap}
@@ -215,7 +222,7 @@
 \input{sections/02_related_work}
 \input{sections/03_system}
 \input{sections/04_results}
-\input{sections/05_implications}
+% \input{sections/05_implications}
 \input{sections/06_conclusion}
 
 \appendix
@@ -250,6 +257,8 @@
     \end{minipage}
   \end{minipage}
 \end{frame}
+
+\input{sections/backup.tex}
 
 % ============================================================
 \end{document}
