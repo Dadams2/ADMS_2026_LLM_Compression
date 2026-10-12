@@ -1,0 +1,319 @@
+% Backup material retained for discussion after the 16-slide spoken path.
+
+\begin{frame}{Backup: Generation Engines Do Not Automatically Win}
+  \small
+  \begin{tabularx}{\textwidth}{llYYY}
+    \toprule
+    \textbf{Engine} & \textbf{Variant} & \textbf{MB/s} & \textbf{Ratio} & \textbf{Speedup} \\
+    \midrule
+    Transformers & + KV cache & \metric{0.0344} & 7.0492 & $1.00\times$ \\
+    Transformers & No KV cache & 0.0030 & 7.0502 & $0.09\times$ \\
+    vLLM & Default & 0.0130 & 7.0304 & $0.37\times$ \\
+    TensorRT-LLM & Batch 256 & 0.0081 & 7.0499 & $0.023\times$ \\
+    TensorRT-LLM & Batch 512 & 0.0065 & 7.9370 & $0.019\times$ \\
+    \bottomrule
+  \end{tabularx}
+
+  % \vspace{0.8em}
+  % \begin{block}{Takeaway}
+  %   vLLM and TensorRT-LLM are excellent generation systems, but this workload exposes scheduling, synchronization, and score-capture costs that ordinary serving can hide \parencite{kwonEfficientMemoryManagement2023,Kipf2026WaitingTD}.
+  % \end{block}
+\end{frame}
+
+\begin{frame}{Backup: Making coding Asynchronous}
+  \centering
+  \resizebox{0.98\textwidth}{!}{%
+  \begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,minimum width=2.65cm,minimum height=1.05cm,align=center,font=\small},
+    arr/.style={-{Stealth[length=5pt]},thick},
+  ]
+    \node[box,fill=blue!10] (vec) at (0,2.1) {\textbf{vectorize}\\$[B,|V'|] \rightarrow [B,3]$\\target intervals};
+    \node[box,fill=mLightBrown!15] (compile) at (3.45,2.1) {\textbf{compile}\\Numba integer\\range updates};
+    \node[box,fill=mDarkTeal!12] (streams) at (6.9,2.1) {\textbf{multistream}\\one $(low,high)$\\state per row};
+    \node[box,fill=green!12] (packed) at (10.35,2.1) {\textbf{pack}\\write bytes directly,\\not Python bit lists};
+    \draw[arr] (vec) -- (compile);
+    \draw[arr] (compile) -- (streams);
+    \draw[arr] (streams) -- (packed);
+
+    \node[anchor=east,font=\scriptsize\bfseries] at (-0.35,0.35) {GPU};
+    \node[anchor=east,font=\scriptsize\bfseries] at (-0.35,-0.55) {CPU};
+    \foreach \i/\x in {0/0,1/3.0,2/6.0,3/9.0} {
+      \node[draw,fill=blue!14,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize] at (\x+1.3,0.35) {infer step $t+\i$};
+    }
+    \node[draw=none,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize,text=black!45] at (1.3,-0.55) {idle};
+    \foreach \i/\x in {0/3.0,1/6.0,2/9.0} {
+      \node[draw,fill=mDarkTeal!14,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize] at (\x+1.3,-0.55) {encode step $t+\i$};
+    }
+    \draw[decorate,decoration={brace,amplitude=4pt},thick,mDarkTeal] (3.0,-1.05) -- (11.65,-1.05);
+    \node[font=\scriptsize,mDarkTeal] at (7.3,-1.42) {background thread overlaps CPU coding with the next GPU call};
+  \end{tikzpicture}
+  }
+
+  \vspace{0.35em}
+  \small Pipelining is safe because compression already knows the next file token: inference for step $t+1$ does not wait for step $t$'s bits to be emitted.
+\end{frame}
+
+\begin{frame}{Backup: Encoder and Decoder Have Different Information}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Compression: $x_{t+1}$ is known}
+        \begin{enumerate}
+          \item Compute and record honest scores.
+          \item Select $x_{t+1}$'s interval.
+          \item Encode it, then append $x_{t+1}$.
+        \end{enumerate}
+      \end{block}
+      \vspace{0.4em}
+      \centering
+      \textcolor{mDarkTeal}{O1 teacher forcing: applicable}\par
+      \textcolor{mDarkTeal}{O3 target record: applicable}
+    \end{column}
+    \hfill
+    \begin{column}{0.47\textwidth}
+      \begin{block}{Decompression: $x_{t+1}$ is unknown}
+        \begin{enumerate}
+          \item Recreate scores from decoded prefix.
+          \item Find the interval containing code value.
+          \item Discover and append $x_{t+1}$.
+        \end{enumerate}
+      \end{block}
+      \vspace{0.4em}
+      \centering
+      \textcolor{red!70!black}{cannot force an unknown token}\par
+      \textcolor{red!70!black}{cannot receive only its interval}
+    \end{column}
+  \end{columns}
+    \vspace{0.9em}
+  \begin{block}{Shared invariant}
+    The tokenizer, model, context policy, global mask, softmax, and integer quantization must reproduce identical intervals. O2's independent row coders preserve this invariant on both sides.
+  \end{block}
+\end{frame}
+
+
+
+% \begin{frame}{Backup: Prior Work Optimizes Different Objectives}
+%   \begin{columns}[T,onlytextwidth]
+%     \begin{column}{0.47\textwidth}
+%       \begin{block}{Compression research}
+%         \begin{itemize}
+%           \item improves probability models and ratios
+%           \item combines predictors with entropy coding
+%           \item rarely reports operator throughput
+%         \end{itemize}
+%       \end{block}
+%       \scriptsize \parencite{schmidhuberSequentialNeuralText1996,goyalDeepZipLosslessData2019,deletangLanguageModelingCompression2024}
+%     \end{column}
+%     \hfill
+%     \begin{column}{0.47\textwidth}
+%       \begin{block}{LLM-serving research}
+%         \begin{itemize}
+%           \item maximizes generated-token throughput
+%           \item schedules independent requests
+%           \item normally returns sampled tokens, not row-stable intervals
+%         \end{itemize}
+%       \end{block}
+%       \scriptsize \parencite{kwonEfficientMemoryManagement2023,zhengSGLangEfficientExecution2024}
+%     \end{column}
+%   \end{columns}
+% \end{frame}
+
+% \begin{frame}{Backup: Fixed and Variable-Length Codes}
+%   \centering
+%   \begin{tikzpicture}[
+%     card/.style={draw,rounded corners=3pt,minimum width=4.7cm,minimum height=3.0cm,align=center},
+%   ]
+%     \node[card,fill=blue!7] at (0,0)
+%       {\Large\bfseries ASCII\\[0.25em]\fontsize{23}{25}\selectfont\bfseries 8.0 bits\\[-0.05em]per character\\[0.35em]
+%        \scriptsize every character gets the same budget};
+%     \node[card,fill=mDarkTeal!8] at (5.5,0)
+%       {\Large\bfseries Huffman\\[0.25em]\fontsize{23}{25}\selectfont\bfseries $\sim$4.2 bits\\[-0.05em]per character\\[0.35em]
+%        \scriptsize frequent characters get shorter codes};
+%   \end{tikzpicture}\par
+%   \vspace{0.8em}
+%   \small Arithmetic coding extends the idea to changing probabilities.\\[-0.1em]
+%   \tiny Huffman (1952); Rissanen and Langdon (1979).
+% \end{frame}
+
+% \begin{frame}{Backup: Arithmetic Coding Narrows an Interval}
+%   \centering
+%   \begin{tikzpicture}[font=\sffamily]
+%     \node[font=\small\bfseries] at (0,2.5) {start $[0,1)$};
+%     \fill[blue!18] (1.5,2.1) rectangle (7.5,2.9);
+%     \fill[orange!20] (7.5,2.1) rectangle (10.5,2.9);
+%     \fill[red!16] (10.5,2.1) rectangle (11.5,2.9);
+%     \draw[thick] (1.5,2.1) rectangle (11.5,2.9);
+%     \draw[very thick,mDarkTeal] (1.5,2.02) rectangle (7.5,2.98);
+%     \node at (4.5,2.5) {A: .60}; \node at (9,2.5) {B: .30}; \node[font=\scriptsize] at (11,2.5) {C: .10};
+%     \node[font=\scriptsize] at (4.5,1.55) {observe A $\Rightarrow [0,.60)$};
+%     \draw[-{Stealth[length=6pt]},thick] (4.5,1.35) -- (4.5,0.8);
+%     \node[draw,rounded corners=2pt,fill=mDarkTeal!9,minimum width=5.8cm,minimum height=0.85cm] at (4.5,0.25)
+%       {repeat inside the retained interval};
+%     \node[draw,rounded corners=2pt,fill=mLightBrown!12,minimum width=4.1cm,minimum height=1.35cm,align=center] at (9.5,0.25)
+%       {final interval contains\\the compressed binary fraction};
+%   \end{tikzpicture}\par
+%   \vspace{0.5em}
+%   \small Likely symbols retain wider intervals and therefore need fewer bits.
+% \end{frame}
+
+% \begin{frame}{Backup: Next-Token Prediction Supplies the Distribution}
+%   \centering
+%   \Large
+%   \[
+%     P(x_{1:n})=\prod_{t=1}^{n}P(x_t\mid x_{<t})
+%   \]
+%   \vspace{0.5em}
+%   \[
+%     \mathcal{L}_{\mathrm{NTP}}=-\sum_{t=1}^{n}\log P_\theta(x_t\mid x_{<t})
+%   \]
+%   \vspace{0.6em}
+
+\begin{frame}{Backup: System Under Study}
+  \centering
+  \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/engine_logit_paths.pdf}
+
+  \vspace{0.2em}
+  \small Same compressor loop and predictor interface; engine differences enter through score or interval capture.
+\end{frame}
+
+% \begin{frame}{Backup: Engine Differences Enter at Score Capture}
+%   \centering
+%   \includegraphics[width=0.95\textwidth,height=0.75\textheight,keepaspectratio]{figures/tikz/engine_logit_paths.pdf}\par
+%   \vspace{0.25em}
+%   \small The compressor loop stays fixed; only the engine boundary changes.
+% \end{frame}
+
+\begin{frame}{Backup: Each Batch Row Owns a Coder Stream}
+  \centering
+  \includegraphics[width=0.94\textwidth,height=0.73\textheight,keepaspectratio]{figures/tikz/multistream_pipeline.pdf}\par
+  \vspace{0.25em}
+  \small Rows run in parallel, but token dependencies remain sequential within each row.
+\end{frame}
+
+\begin{frame}{Backup: Full Optimization Ablation}
+  \scriptsize
+  \renewcommand{\arraystretch}{1.08}
+  \begin{tabularx}{\textwidth}{llYYY}
+    \toprule
+    \textbf{Engine} & \textbf{Configuration} & \textbf{MB/s} & \textbf{Speedup} & \textbf{Coder time} \\
+    \midrule
+    Transformers & Baseline AC & 0.0018 & $1.00\times$ & 97.1\% \\
+    Transformers & Target-interval capture & \metric{0.0347} & \metric{$18.96\times$} & \metric{1.0\%} \\
+    Transformers & Multistream + target intervals & 0.0345 & $18.84\times$ & 1.0\% \\
+    \midrule
+    vLLM & Baseline AC & 0.0031 & $1.00\times$ & 89.9\% \\
+    vLLM & Teacher-forced windows & \metric{0.0116} & \metric{$3.43\times$} & 9.2\% \\
+    vLLM & Target-interval capture & 0.0065 & $1.94\times$ & 3.0\% \\
+    \midrule
+    TensorRT-LLM & Baseline AC & 0.0020 & $1.00\times$ & 58.2\% \\
+    TensorRT-LLM & Target-interval capture & \metric{0.0044} & \metric{$2.18\times$} & 0.7\% \\
+    \bottomrule
+  \end{tabularx}
+  \vspace{0.45em}
+  \tiny Qwen2.5-0.5B, batch 256, context 128, A100, \texttt{text8}; speedup is normalized within each engine.
+\end{frame}
+
+\begin{frame}{Backup: Longer Context Mainly Improves Ratio}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      width=0.88\textwidth,height=0.67\textheight,
+      xlabel={Context length},ylabel={Compression ratio},
+      xmin=16,xmax=530,ymin=6.1,ymax=7.2,
+      xtick={32,64,128,256,512},grid=major,grid style={draw=black!13},
+      tick label style={font=\scriptsize},label style={font=\small},
+    ]
+      \addplot[very thick,mDarkTeal,mark=*] coordinates {(32,6.2288) (64,6.6592) (128,6.9239) (256,7.0600) (512,7.1007)};
+    \end{axis}
+  \end{tikzpicture}\par
+  \vspace{-0.15em}
+  \small Throughput remains between 0.0324 and 0.0349 MB/s; ratio gains diminish after the first few hundred tokens.
+\end{frame}
+
+\begin{frame}{Backup: Encoding Choice Does Not Fix Inference Cost}
+  \small
+  \begin{tabularx}{\textwidth}{lYYY}
+    \toprule
+    \textbf{Encoding} & \textbf{MB/s} & \textbf{Ratio} & \textbf{Interpretation} \\
+    \midrule
+    Target-interval AC & 0.0349 & \metric{7.1007} & best ratio \\
+    Bitpacked ranks & 0.0363 & 2.8735 & ratio collapses \\
+    Huffman ranks & 0.0359 & 6.1962 & no speed advantage \\
+    \midrule
+    LZ4 & \metric{666.66} & 1.83 & CPU baseline \\
+    zstd & \metric{586.70} & 3.06 & CPU baseline \\
+    FSST & 294.11 & 2.08 & database baseline \\
+    xz -9e & 1.34 & 4.30 & slower, stronger ratio \\
+    \bottomrule
+  \end{tabularx}
+  \vspace{0.4em}
+  \tiny Cross-system encode comparison; CPU and LLM rows use different hardware and sample sizes.
+\end{frame}
+
+\begin{frame}{Backup: Code Compresses Especially Well}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      ybar,bar width=24pt,width=0.82\textwidth,height=0.62\textheight,
+      ymin=0,ymax=12.5,ylabel={Compression ratio},
+      symbolic x coords={text8,Python code,Yelp},xtick=data,
+      grid=major,grid style={draw=black!13},nodes near coords,
+      tick label style={font=\small},label style={font=\small},
+    ]
+      \addplot[fill=mDarkTeal!75,draw=mDarkTeal] coordinates {(text8,7.739) (Python code,11.203) (Yelp,7.028)};
+    \end{axis}
+  \end{tikzpicture}\par
+  \vspace{-0.2em}
+  \small Domain-structured text such as code, logs, and repeated records is a promising target for specialized models.
+\end{frame}
+
+\begin{frame}{Backup: What an Engine API Should Expose}
+  \begin{enumerate}
+    \item \textbf{Row-stable score or interval capture} without a generation round trip.
+    \vspace{0.35em}
+    \item \textbf{Stateful stepping} that preserves KV state across known prefixes.
+    \vspace{0.35em}
+    \item \textbf{Reduced outputs} such as target intervals when the consumer does not need dense logits.
+    \vspace{0.35em}
+    \item \textbf{Deterministic replay} across encoder and decoder deployments.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Backup: A100 Round-Trip Benchmark}
+  \begin{table}
+    \centering
+    \small
+    \begin{tabular}{lrrr}
+      \toprule
+      Direction & Wall time (s) & Throughput (KiB/s) & Inference (s) \\
+      \midrule
+      Encode & 6.041 & 0.892 & 0.381 \\
+      Decode & 5.108 & 1.055 & 0.393 \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+
+  \vspace{0.35em}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.47\textwidth}
+      \textbf{Completed here}
+      \begin{itemize}
+        \item With small batch size
+        \item warm-up, then median of three runs
+        \item byte-for-byte round-trip verification
+      \end{itemize}
+    \end{column}
+    \hfill
+    \begin{column}{0.47\textwidth}
+      \textbf{Still needed cross-codec}
+      \begin{itemize}
+        \item FSST, OnPair+, and zstd on one CPU core
+        \item identical corpus and sample sizes
+        \item warmed, amortized jobs for a cost claim
+      \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \vfill
+  \tiny 5,517 B of \texttt{text8}; Qwen2.5-0.5B, Transformers + arithmetic coding, batch 256, context 256. Wall time includes startup; compressed artifact is $3.34\times$ smaller.
+\end{frame}
+

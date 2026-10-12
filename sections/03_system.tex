@@ -4,55 +4,74 @@
 
 \section{System}
 
-\begin{frame}{System Under Study}
-  \centering
-  \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/engine_logit_paths.pdf}
-
-  \vspace{0.2em}
-  \small Same compressor loop and predictor interface; engine differences enter through score or interval capture.
-\end{frame}
 
 \begin{frame}{Optimization Map}
   \centering
   \includegraphics[width=0.96\textwidth,height=0.78\textheight,keepaspectratio]{figures/tikz/optimization_legend.pdf}
 
-  \vspace{0.2em}
-  \small All three preserve the encoded probabilities. O1 and compressor-side O3 exploit that the input's next token is already known; O2 accelerates equivalent range-coder updates \parencite{Lam2015NumbaAL}.
+  % \vspace{0.2em}
+  % \small All three preserve the encoded probabilities. O1 and compressor-side O3 exploit that the input's next token is already known; O2 accelerates equivalent range-coder updates \parencite{Lam2015NumbaAL}.
 \end{frame}
 
-\begin{frame}{O1: Amortize the Request Boundary}
+\begin{frame}{Experimental Setup}
+  \small
+  \begin{tabularx}{\textwidth}{lX}
+    \toprule
+    \textbf{Dimension} & \textbf{Configuration} \\
+    \midrule
+    Model & \texttt{Qwen/Qwen2.5-0.5B} \\
+    Default hardware & Dual AMD EPYC Milan 7313, 512 GB DDR4, NVIDIA A100 40 GB SXM4 \\
+    Datasets & \texttt{text8}, Python code from PyTorrent, Yelp Open Dataset records \\
+    Default operating point & Batch size 256, context length 256, 100 retained tokens \\
+    Metrics & Throughput in uncompressed MB/s; compression ratio as original/compressed size \\
+    \bottomrule
+  \end{tabularx}
+\end{frame}
+
+\begin{frame}{Three Datasets Cover Distinct Text Domains}
+  \small
+  \begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
+    \toprule
+    \textbf{Dataset} & \textbf{Content} & \textbf{Evaluation data} \\
+    \midrule
+    \texttt{text8} & English text extracted from Wikipedia & 100\,MiB \\
+    PyTorrent & Python source code & First 100\,MiB \\
+    Yelp Open Dataset & Structured business records & 150,346 records \\
+    \bottomrule
+  \end{tabularx}
+  \vfill
+  \tiny Datasets follow the evaluation corpus from prior work \parencite{Kipf2026WaitingTD}.
+\end{frame}
+
+\begin{frame}{Teacher-Forced Windows Amortize vLLM Scheduling}
   \centering
-  \begin{tikzpicture}[
-    reqbox/.style={draw,rounded corners=2pt,minimum width=1.8cm,minimum height=0.72cm,align=center,font=\scriptsize},
+  \begin{tikzpicture}[scale=0.94,every node/.style={transform shape},
+    req/.style={draw,rounded corners=2pt,minimum width=1.85cm,minimum height=0.7cm,align=center,font=\scriptsize},
     arr/.style={-{Stealth[length=5pt]},thick},
   ]
-    \node[anchor=east,font=\small\bfseries] at (0.2,2.15) {baseline};
-    \foreach \i/\x in {0/1.5,1/4.2,2/6.9,3/9.6} {
-      \node[reqbox,fill=red!9] (r\i) at (\x,2.15) {request + schedule\\score $t+\i$};
+    \node[anchor=east,font=\small\bfseries] at (0.2,2.0) {one-token calls};
+    \foreach \i/\x in {0/1.55,1/4.15,2/6.75,3/9.35} {
+      \node[req,fill=red!9] (r\i) at (\x,2.0) {request + schedule\\score $t+\i$};
     }
-    \draw[arr] (r0) -- (r1);
-    \draw[arr] (r1) -- (r2);
-    \draw[arr] (r2) -- (r3);
-    \node[font=\scriptsize,text=red!70!black] at (5.55,1.38) {four request creations, schedules, and synchronizations};
+    \draw[arr] (r0) -- (r1); \draw[arr] (r1) -- (r2); \draw[arr] (r2) -- (r3);
 
-    \node[anchor=east,font=\small\bfseries] at (0.2,-0.35) {window $w=4$};
-    \node[reqbox,fill=blue!12] (s0) at (1.5,-0.35) {score $t$\\force $x_{t+1}$};
-    \node[reqbox,fill=blue!12] (s1) at (4.2,-0.35) {score $t+1$\\force $x_{t+2}$};
-    \node[reqbox,fill=blue!12] (s2) at (6.9,-0.35) {score $t+2$\\force $x_{t+3}$};
-    \node[reqbox,fill=blue!12] (s3) at (9.6,-0.35) {score $t+3$\\force $x_{t+4}$};
+    \node[anchor=east,font=\small\bfseries] at (0.2,-0.25) {one window};
+    \foreach \i/\x in {0/1.55,1/4.15,2/6.75,3/9.35} {
+      \node[req,fill=blue!11] (s\i) at (\x,-0.25) {score $t+\i$\\force known token};
+    }
     \draw[arr] (s0) -- node[above,font=\tiny] {KV state} (s1);
     \draw[arr] (s1) -- node[above,font=\tiny] {KV state} (s2);
     \draw[arr] (s2) -- node[above,font=\tiny] {KV state} (s3);
-    \node[draw=mDarkTeal,rounded corners=2pt,fit=(s0)(s1)(s2)(s3),inner sep=7pt,label={[font=\scriptsize,mDarkTeal]below:one vLLM request}] {};
+    \node[draw=mDarkTeal,very thick,rounded corners=2pt,fit=(s0)(s1)(s2)(s3),inner sep=6pt] {};
   \end{tikzpicture}
 
-  \vspace{0.8em}
-  \begin{block}{What O1 saves}
-    The same four model positions are evaluated. Windowing pays the fixed engine boundary once, rather than reducing the per-token transformer computation.
-  \end{block}
+  % \vspace{0.7em}
+  % \begin{block}{Why only vLLM?}
+  %   vLLM's public path advances through a sampler and scheduler. Forcing lets one request traverse several known prefixes. Transformers already exposes a direct host-controlled token loop, so wrapping it in a generation request adds no benefit.
+  % \end{block}
 \end{frame}
 
-\begin{frame}{O1: What Happens Inside Each Window Step}
+\begin{frame}{Teacher-Forced Windows Amortize vLLM Scheduling}
   \centering
   \begin{tikzpicture}[
     box/.style={draw,rounded corners=2pt,minimum width=2.55cm,minimum height=0.9cm,align=center,font=\small},
@@ -73,11 +92,98 @@
       {compression: observed file token\\chooses the next prefix};
   \end{tikzpicture}
 
-  \vspace{0.55em}
-  \small The score is captured \emph{before} forcing changes the sampler. KV caching avoids recomputing old keys and values, but each new position still runs the model.
+  % \vspace{0.55em}
+  % \small The score is captured \emph{before} forcing changes the sampler. KV caching avoids recomputing old keys and values, but each new position still runs the model.
 \end{frame}
 
-\begin{frame}{O2: Split the File into Row-Local Streams}
+\begin{frame}{Windowing Raises vLLM Throughput $3.4\times$}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.58\textwidth}
+      \includegraphics[width=\textwidth]{\plotsdir/vllm_window_sweep_heatmap.pdf}
+    \end{column}
+    \hfill
+    \begin{column}{0.37\textwidth}
+      \vspace{0.55em}
+      \begin{tikzpicture}
+        \node[draw=mDarkTeal,very thick,rounded corners=3pt,fill=mDarkTeal!8,
+          minimum width=4.2cm,minimum height=1.45cm,align=center]
+          {\fontsize{28}{30}\selectfont\bfseries $3.43\times$\\[-0.05em]
+           \small at the measured operating point};
+      \end{tikzpicture}
+      \vspace{0.7em}
+      \small
+      \begin{itemize}
+        \item Gains concentrate at small and medium batches.
+        \item Window 8 captures most of the benefit.
+        \item Larger windows trade scheduling for memory.
+      \end{itemize}
+    \end{column}
+  \end{columns}
+  \vfill
+  \tiny Qwen2.5-0.5B, vLLM, A100, \texttt{text8}; throughput in MB/s. Window 1 means one request per token.
+\end{frame}
+
+\begin{frame}[shrink=2]{Generation-Optimized Engines Expose the Wrong Interface}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      ybar,bar width=18pt,width=0.84\textwidth,height=0.45\textheight,
+      ymin=0,ymax=0.038,ylabel={Compression throughput (MB/s)},
+      symbolic x coords={Transformers,vLLM,TensorRT-LLM},xtick=data,
+      tick label style={font=\small},label style={font=\small},
+      grid=major,grid style={draw=black!13},scaled y ticks=false,
+      yticklabel style={/pgf/number format/fixed,/pgf/number format/precision=3},
+      nodes near coords,nodes near coords style={font=\scriptsize,/pgf/number format/fixed,/pgf/number format/precision=4},
+    ]
+      \addplot[fill=codecLLM!85,draw=codecLLM] coordinates {
+        (Transformers,0.0344) (vLLM,0.0130) (TensorRT-LLM,0.0081)
+      };
+    \end{axis}
+  \end{tikzpicture}
+
+  \vspace{-0.2em}
+  \small
+  \begin{block}{High token serving throughput is not high compression throughput}
+    Compression needs row-stable scores or intervals at every position. Scheduling, synchronization, and result reassembly become visible costs.
+  \end{block}
+  \vfill
+  \tiny Qwen2.5-0.5B, batch 256, context 256, A100, \texttt{text8}; best comparable configuration per engine.
+\end{frame}
+
+% \begin{frame}{O1: Amortize the Request Boundary}
+%   \centering
+%   \begin{tikzpicture}[
+%     reqbox/.style={draw,rounded corners=2pt,minimum width=1.8cm,minimum height=0.72cm,align=center,font=\scriptsize},
+%     arr/.style={-{Stealth[length=5pt]},thick},
+%   ]
+%     \node[anchor=east,font=\small\bfseries] at (0.2,2.15) {baseline};
+%     \foreach \i/\x in {0/1.5,1/4.2,2/6.9,3/9.6} {
+%       \node[reqbox,fill=red!9] (r\i) at (\x,2.15) {request + schedule\\score $t+\i$};
+%     }
+%     \draw[arr] (r0) -- (r1);
+%     \draw[arr] (r1) -- (r2);
+%     \draw[arr] (r2) -- (r3);
+%     \node[font=\scriptsize,text=red!70!black] at (5.55,1.38) {four request creations, schedules, and synchronizations};
+
+%     \node[anchor=east,font=\small\bfseries] at (0.2,-0.35) {window $w=4$};
+%     \node[reqbox,fill=blue!12] (s0) at (1.5,-0.35) {score $t$\\force $x_{t+1}$};
+%     \node[reqbox,fill=blue!12] (s1) at (4.2,-0.35) {score $t+1$\\force $x_{t+2}$};
+%     \node[reqbox,fill=blue!12] (s2) at (6.9,-0.35) {score $t+2$\\force $x_{t+3}$};
+%     \node[reqbox,fill=blue!12] (s3) at (9.6,-0.35) {score $t+3$\\force $x_{t+4}$};
+%     \draw[arr] (s0) -- node[above,font=\tiny] {KV state} (s1);
+%     \draw[arr] (s1) -- node[above,font=\tiny] {KV state} (s2);
+%     \draw[arr] (s2) -- node[above,font=\tiny] {KV state} (s3);
+%     \node[draw=mDarkTeal,rounded corners=2pt,fit=(s0)(s1)(s2)(s3),inner sep=7pt,label={[font=\scriptsize,mDarkTeal]below:one vLLM request}] {};
+%   \end{tikzpicture}
+
+%   \vspace{0.8em}
+%   \begin{block}{What O1 saves}
+%     The same four model positions are evaluated. Windowing pays the fixed engine boundary once, rather than reducing the per-token transformer computation.
+%   \end{block}
+% \end{frame}
+
+
+\begin{frame}{Multistreaming AC: Split the File into Row-Local Streams}
   \centering
   \begin{tikzpicture}[
     token/.style={draw,rounded corners=2pt,minimum width=0.75cm,minimum height=0.52cm,font=\scriptsize},
@@ -107,108 +213,170 @@
       {parallel across rows; still sequential within each row};
   \end{tikzpicture}
 
-  \vspace{0.35em}
-  \small Row lengths and stream boundaries allow the independently encoded rows to be concatenated and reconstructed in original order.
+  % \vspace{0.35em}
+  % \small Row lengths and stream boundaries allow the independently encoded rows to be concatenated and reconstructed in original order.
 \end{frame}
 
-\begin{frame}{O2: Four Changes in the Coding Path}
+\begin{frame}{Multistream example: Two Rows, Two Bitstreams}
   \centering
-  \resizebox{0.98\textwidth}{!}{%
   \begin{tikzpicture}[
-    box/.style={draw,rounded corners=2pt,minimum width=2.65cm,minimum height=1.05cm,align=center,font=\small},
+    token/.style={draw,rounded corners=2pt,minimum width=0.62cm,minimum height=0.5cm,font=\small},
+    box/.style={draw,rounded corners=2pt,minimum height=0.68cm,align=center,font=\small},
     arr/.style={-{Stealth[length=5pt]},thick},
   ]
-    \node[box,fill=blue!10] (vec) at (0,2.1) {\textbf{vectorize}\\$[B,|V'|] \rightarrow [B,3]$\\target intervals};
-    \node[box,fill=mLightBrown!15] (compile) at (3.45,2.1) {\textbf{compile}\\Numba integer\\range updates};
-    \node[box,fill=mDarkTeal!12] (streams) at (6.9,2.1) {\textbf{multistream}\\one $(low,high)$\\state per row};
-    \node[box,fill=green!12] (packed) at (10.35,2.1) {\textbf{pack}\\write bytes directly,\\not Python bit lists};
-    \draw[arr] (vec) -- (compile);
-    \draw[arr] (compile) -- (streams);
-    \draw[arr] (streams) -- (packed);
+    \node[anchor=east,font=\small\bfseries] at (-0.15,3.05) {input file};
+    \foreach \x/\v in {0/A,0.72/B,1.44/A,2.16/C,2.88/A,3.60/B} {
+      \node[token,fill=blue!9] at (\x,3.05) {\v};
+    }
+    \draw[very thick,mLightBrown] (1.80,2.65) -- (1.80,3.45);
+    \node[font=\scriptsize,mLightBrown] at (1.80,2.43) {split into $B=2$ contiguous rows};
 
-    \node[anchor=east,font=\scriptsize\bfseries] at (-0.35,0.35) {GPU};
-    \node[anchor=east,font=\scriptsize\bfseries] at (-0.35,-0.55) {CPU};
-    \foreach \i/\x in {0/0,1/3.0,2/6.0,3/9.0} {
-      \node[draw,fill=blue!14,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize] at (\x+1.3,0.35) {infer step $t+\i$};
-    }
-    \node[draw=none,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize,text=black!45] at (1.3,-0.55) {idle};
-    \foreach \i/\x in {0/3.0,1/6.0,2/9.0} {
-      \node[draw,fill=mDarkTeal!14,minimum width=2.65cm,minimum height=0.58cm,font=\scriptsize] at (\x+1.3,-0.55) {encode step $t+\i$};
-    }
-    \draw[decorate,decoration={brace,amplitude=4pt},thick,mDarkTeal] (3.0,-1.05) -- (11.65,-1.05);
-    \node[font=\scriptsize,mDarkTeal] at (7.3,-1.42) {background thread overlaps CPU coding with the next GPU call};
+    \node[box,fill=mLightBrown!16,minimum width=1.65cm] (r0) at (0.45,1.25)
+      {row 0\\\texttt{A B A}};
+    \node[box,fill=mLightBrown!16,minimum width=1.65cm] (r1) at (0.45,-0.25)
+      {row 1\\\texttt{C A B}};
+
+    \node[box,fill=green!10,minimum width=3.55cm] (i0) at (4.1,1.25)
+      {store seed \texttt{A}\\encode \texttt{B}: $[6,9)/10$\\encode \texttt{A}: $[0,7)/10$};
+    \node[box,fill=green!10,minimum width=3.55cm] (i1) at (4.1,-0.25)
+      {store seed \texttt{C}\\encode \texttt{A}: $[0,5)/10$\\encode \texttt{B}: $[2,9)/10$};
+
+    \node[box,fill=mDarkTeal!13,minimum width=2.2cm] (c0) at (7.8,1.25)
+      {coder state 0\\starts at $[0,255]$};
+    \node[box,fill=mDarkTeal!13,minimum width=2.2cm] (c1) at (7.8,-0.25)
+      {coder state 1\\starts at $[0,255]$};
+
+    \node[box,fill=red!9,minimum width=1.65cm,font=\small\bfseries] (b0) at (10.75,1.25)
+      {stream 0\\\texttt{11}};
+    \node[box,fill=red!9,minimum width=1.65cm,font=\small\bfseries] (b1) at (10.75,-0.25)
+      {stream 1\\\texttt{01}};
+
+    \draw[arr] (r0) -- (i0);
+    \draw[arr] (r1) -- (i1);
+    \draw[arr] (i0) -- (c0);
+    \draw[arr] (i1) -- (c1);
+    \draw[arr] (c0) -- (b0);
+    \draw[arr] (c1) -- (b1);
+
+    \node[draw,rounded corners=2pt,fill=black!4,align=center,font=\scriptsize,
+          text width=11.3cm,minimum height=0.82cm] at (5.45,-1.75)
+      {payload = seeds \texttt{A,C} + stream lengths + stream 0 \texttt{11} + stream 1 \texttt{01}\\
+       decode \texttt{A B A} and \texttt{C A B}, then join $\Longrightarrow$ \texttt{A B A C A B}};
   \end{tikzpicture}
-  }
 
-  \vspace{0.35em}
-  \small Pipelining is safe because compression already knows the next file token: inference for step $t+1$ does not wait for step $t$'s bits to be emitted.
+  \vspace{0.15em}
+  \scriptsize Toy alphabet $\{A,B,C\}$, frequency total $T=10$, and 8-bit coder state. Intervals come from each row's context-dependent model distribution; the displayed bits include the coder's terminating bit.
 \end{frame}
 
-\begin{frame}{O3: Move Target-Interval Selection into the Backend}
+
+\begin{frame}{Multistream makes the biggest difference}
   \centering
-  \resizebox{0.98\textwidth}{!}{%
+  \includegraphics[width=0.88\textwidth,height=0.66\textheight,keepaspectratio]{figures/tikz/bottleneck_shift.pdf}
+
+  \vspace{0.15em}
+  \begin{tikzpicture}
+    \node[draw=codecBase,very thick,rounded corners=3pt,fill=red!6,
+      minimum width=9.2cm,minimum height=0.8cm,align=center]
+      {\textbf{97.1\%} of baseline wall time is arithmetic coding and score conversion};
+  \end{tikzpicture}
+  \vfill
+  \tiny Qwen2.5-0.5B, Transformers, batch 256, A100, \texttt{text8}; end-to-end encode timing.
+\end{frame}
+
+
+
+\begin{frame}{Target-Interval Capture: Select Inside the Backend}
+  \centering
   \begin{tikzpicture}[
     box/.style={draw,rounded corners=2pt,minimum height=0.78cm,align=center,font=\small},
     arr/.style={-{Stealth[length=5pt]},thick},
   ]
-    \node[font=\small\bfseries] at (0,2.75) {Baseline: dense scores cross the boundary};
-    \node[box,fill=red!10,minimum width=2.8cm] (dense) at (0,1.75) {$B\times |V'|$ logits\\or probabilities};
-    \node[box,fill=red!10,minimum width=3.2cm] (host) at (4.0,1.75) {host softmax + counts\\CDF + target lookup};
-    \node[box,fill=red!10,minimum width=2.5cm] (coder) at (8.0,1.75) {range-coder\\update};
-    \draw[arr] (dense) -- node[above,font=\tiny] {$O(B|V'|)$ floats} (host);
+    \node[anchor=west,font=\small\bfseries] at (-1.6,2.75) {Baseline: dense scores cross the boundary};
+    \node[box,fill=red!10,minimum width=3.2cm] (dense) at (0,1.75) {backend returns\\$B\times |V'|$ floats};
+    \node[box,fill=red!10,minimum width=3.8cm] (host) at (4.4,1.75) {host softmax + integer counts\\prefix sum + target lookup};
+    \node[box,fill=red!10,minimum width=2.6cm] (coder) at (8.8,1.75) {range-coder\\update};
+    \draw[arr] (dense) -- (host);
     \draw[arr] (host) -- (coder);
 
-    \node[font=\small\bfseries] at (0,-0.1) {O3: return only what the encoder consumes};
-    \node[box,fill=green!12,minimum width=3.35cm] (backend) at (0,-1.15) {backend: mask + softmax\\counts + prefix sum};
-    \node[box,fill=green!12,minimum width=3.0cm] (record) at (4.0,-1.15) {select known target\\$(\ell,h,T,p_{target})$};
-    \node[box,fill=mDarkTeal!12,minimum width=2.5cm] (coder2) at (8.0,-1.15) {range-coder\\update};
+    \node[anchor=west,font=\small\bfseries] at (-1.6,-0.1) {Target-Interval: select the known target before transfer};
+    \node[box,fill=green!12,minimum width=3.2cm] (backend) at (0,-1.15) {backend softmax + counts\\prefix sum + target lookup};
+    \node[box,fill=green!12,minimum width=3.8cm] (record) at (4.4,-1.15) {return $B$ records\\$(\ell,h,T,p_{target})$};
+    \node[box,fill=mDarkTeal!12,minimum width=2.6cm] (coder2) at (8.8,-1.15) {range-coder\\update};
     \draw[arr] (backend) -- (record);
-    \draw[arr] (record) -- node[above,font=\tiny] {$O(B)$ records} (coder2);
+    \draw[arr] (record) -- (coder2);
 
-    \node[draw,rounded corners=2pt,fill=mLightBrown!12,align=left,font=\small,text width=3.4cm,minimum height=3.2cm] at (11.05,0.3)
-      {\textbf{Important}\\[0.35em]
-       The $O(|V'|)$ softmax / prefix work moves into the backend; it still occurs.\\[0.5em]
-       Host transfer and host-side CDF construction are removed.};
+    % \node[draw,rounded corners=2pt,fill=mLightBrown!12,align=left,font=\small,
+    %       text width=10.9cm,inner sep=5pt] at (4.4,-2.75)
+    %   {\textbf{Why integer counts?} Range coding updates an integer state, so encoder and
+    %    decoder need the same cumulative bounds $(\ell,h,T)$. O3 moves this existing
+    %    conversion; it does not add it.};
   \end{tikzpicture}
-  }
-
-  \vspace{0.35em}
-  \small The encoder knows the true token index, so the backend can select its quantized interval before returning to the host.
 \end{frame}
 
-\begin{frame}{Encoder and Decoder Have Different Information}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.47\textwidth}
-      \begin{block}{Compression: $x_{t+1}$ is known}
-        \begin{enumerate}
-          \item Compute and record honest scores.
-          \item Select $x_{t+1}$'s interval.
-          \item Encode it, then append $x_{t+1}$.
-        \end{enumerate}
-      \end{block}
-      \vspace{0.4em}
-      \centering
-      \textcolor{mDarkTeal}{O1 teacher forcing: applicable}\par
-      \textcolor{mDarkTeal}{O3 target record: applicable}
-    \end{column}
-    \hfill
-    \begin{column}{0.47\textwidth}
-      \begin{block}{Decompression: $x_{t+1}$ is unknown}
-        \begin{enumerate}
-          \item Recreate scores from decoded prefix.
-          \item Find the interval containing code value.
-          \item Discover and append $x_{t+1}$.
-        \end{enumerate}
-      \end{block}
-      \vspace{0.4em}
-      \centering
-      \textcolor{red!70!black}{cannot force an unknown token}\par
-      \textcolor{red!70!black}{cannot receive only its interval}
-    \end{column}
-  \end{columns}
+\begin{frame}{Target-Interval Selection: One Row}
+  \centering
+  \begin{tikzpicture}[
+    box/.style={draw,rounded corners=2pt,minimum height=0.72cm,align=center,font=\small},
+    arr/.style={-{stealth[length=5pt]},thick},
+  ]
+    \node[font=\small\bfseries] at (1.75,3.0) {one model row};
+    \node[box,fill=blue!10,minimum width=4.2cm] (probs) at (1.75,2.05)
+      {alphabet $[a,b,c]$\\probabilities $[0.60,\,0.30,\,0.10]$\\known next file token: \texttt{b}};
 
-  \vspace{0.9em}
-  \begin{block}{Shared invariant}
-    The tokenizer, model, context policy, global mask, softmax, and integer quantization must reproduce identical intervals. O2's independent row coders preserve this invariant on both sides.
-  \end{block}
+    \node[font=\small\bfseries] at (7.25,3.0) {inside the inference backend};
+    \node[box,fill=green!11,minimum width=3.75cm] (counts) at (6.2,2.05)
+      {integer counts, $T=10$\\$[6,3,1]$\\CDF $[0,6,9,10]$};
+    \node[box,fill=mLightBrown!16,minimum width=2.75cm] (select) at (10.25,2.05)
+      {select \texttt{b}\\$[6,9)$};
+    \draw[arr] (probs) -- (counts);
+    \draw[arr] (counts) -- (select);
+
+    \node[draw,rounded corners=2pt,fill=red!8,align=center,font=\small,
+          minimum width=4.5cm,minimum height=1.05cm] (dense) at (2.25,-0.15)
+      {\textbf{ordinary multistream handoff}\\transfer the dense row $[0.60,0.30,0.10]$\\host derives the target interval};
+    \node[draw,rounded corners=2pt,fill=mDarkTeal!12,align=center,font=\small,
+          minimum width=4.9cm,minimum height=1.05cm] (record) at (8.1,-0.15)
+      {\textbf{target-interval handoff}\\transfer only $(\ell,h,T,p_{target})$\\$=(6,9,10,0.30)$};
+    \draw[arr,red!65!black] (probs.south) -- (dense.north);
+    \draw[arr,mDarkTeal] (select.south) -- (record.north);
+
+    \node[box,fill=black!4,minimum width=6.6cm] (update) at (6.0,-1.75)
+      {same row-local fastac coder: $[0,255]\rightarrow[153,229]$\\
+       $low'=0+\lfloor 6\cdot256/10\rfloor$,\quad
+       $high'=0+\lfloor 9\cdot256/10\rfloor-1$};
+    \draw[arr] (dense.south) -- (update.north west);
+    \draw[arr] (record.south) -- (update.north east);
+  \end{tikzpicture}
+
+  % \vspace{0.25em}
+  % \small The integer range coder already needs $(\ell,h,T)$. O3 returns only that selected interval, removing the dense transfer and duplicate host work.
+\end{frame}
+
+\begin{frame}{Mutistream and Target Interval Raise Throughput $19\times$}
+  \centering
+  \begin{tikzpicture}
+    \begin{axis}[
+      xbar,bar width=11pt,width=0.83\textwidth,height=0.64\textheight,
+      xmin=0,xmax=0.044,xlabel={Compression throughput (MB/s)},
+      symbolic y coords={TensorRT target interval,TensorRT baseline,vLLM teacher-forced window,vLLM baseline,Transformers target interval,Transformers baseline},
+      ytick=data,yticklabel style={font=\scriptsize},tick label style={font=\scriptsize},
+      label style={font=\small},grid=major,grid style={draw=black!13},
+      scaled x ticks=false,xticklabel style={/pgf/number format/fixed,/pgf/number format/precision=3},
+      nodes near coords,nodes near coords style={font=\scriptsize,anchor=west,/pgf/number format/fixed,/pgf/number format/precision=4},
+      enlarge y limits=0.10,
+    ]
+      \addplot[fill=codecLLM!85,draw=codecLLM] coordinates {
+        (0.0018,Transformers baseline)
+        (0.0347,Transformers target interval)
+        (0.0031,vLLM baseline)
+        (0.0116,vLLM teacher-forced window)
+        (0.0020,TensorRT baseline)
+        (0.0044,TensorRT target interval)
+      };
+    \end{axis}
+  \end{tikzpicture}
+  \vspace{-0.3em}
+
+  \vfill
+  \tiny Qwen2.5-0.5B, batch 256, context 128, A100, \texttt{text8}; relative gains use each engine's own baseline.
 \end{frame}

@@ -4,6 +4,56 @@
 
 \section{Motivation}
 
+\begin{frame}{Language Models Find Structure Across Modalities}
+  \centering
+  \small Chinchilla 70B compressed size as a percentage of the original; lower is better
+
+  \vspace{0.65em}
+  \begin{tikzpicture}[
+    modality/.style={draw,rounded corners=3pt,minimum width=3.35cm,minimum height=2.45cm,align=center},
+  ]
+    \node[modality,fill=blue!8] (textcard) at (0,0)
+      {\Large\bfseries Text\\[0.35em]{\fontsize{28}{30}\selectfont\bfseries 8.3\%}\\[0.2em]\scriptsize enwik9};
+    \node[modality,fill=mLightBrown!12] at (4.25,0)
+      {\Large\bfseries Image\\[0.35em]{\fontsize{28}{30}\selectfont\bfseries 48.0\%}\\[0.2em]\scriptsize ImageNet};
+    \node[modality,fill=mDarkTeal!9] at (8.5,0)
+      {\Large\bfseries Audio\\[0.35em]{\fontsize{28}{30}\selectfont\bfseries 21.0\%}\\[0.2em]\scriptsize LibriSpeech};
+    \node[draw=mDarkTeal,very thick,rounded corners=3pt,fit=(textcard),inner sep=3pt] {};
+  \end{tikzpicture}
+
+  \scriptsize 1 GB datasets; model weights excluded. \parencite{deletangLanguageModelingCompression2024}
+\end{frame}
+
+\begin{frame}{Compression performance scales with model size}
+  \centering
+  \small
+  \textbf{Raw compression rate (\%)} \quad compressed size / original size; lower is better
+
+  \vspace{0.2em}
+  \renewcommand{\arraystretch}{1.0}
+  \setlength{\tabcolsep}{10pt}
+  \begin{tabular}{lccc}
+    \toprule
+    \textbf{Compressor} & \textbf{enwik9} & \textbf{ImageNet} & \textbf{LibriSpeech} \\
+    \midrule
+    gzip            & 48.1 & 68.6 & 38.5 \\
+    PNG             & 80.6 & 61.7 & 37.6 \\
+    FLAC            & 88.9 & 60.9 & 30.3 \\
+    \midrule
+    Chinchilla 1B   & 11.3 & 62.2 & 24.9 \\
+    Chinchilla 7B   & 10.2 & 54.7 & 23.6 \\
+    \rowcolor{mDarkTeal!12}
+    \textbf{Chinchilla 70B} & \textbf{8.3} & \textbf{48.0} & \textbf{21.0} \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.2em}
+  \footnotesize \textbf{\textcolor{mDarkTeal}{Takeaway:}} A text-trained LLM can compress image and audio bytes.
+
+  \vspace{0.1em}
+  \scriptsize 1~GB datasets; 2,048-byte chunks; model weights excluded. Adjusted Chinchilla rates are 211--14,048\% \parencite{deletangLanguageModelingCompression2024}.
+\end{frame}
+
 \begin{frame}{Text Is a First-Class Analytics Datatype}
   \centering
   \begin{tikzpicture}[
@@ -80,38 +130,10 @@
   \end{tikzpicture}
 
   \vspace{0.55em}
-  \small Neural predictors expose language-level redundancy that classical block codecs miss \parencite{deletangLanguageModelingCompression2024,llmzip,lossless_data_compression_llm}.
+  % \small Neural predictors expose language-level redundancy that classical block codecs miss \parencite{deletangLanguageModelingCompression2024,llmzip,lossless_data_compression_llm}.
 \end{frame}
 
-\begin{frame}{Chinchilla Compresses More as the Model Scales}
-  \centering
-  \small
-  \textbf{Raw compression rate (\%)} \quad compressed size / original size; lower is better
 
-  \vspace{0.2em}
-  \renewcommand{\arraystretch}{1.0}
-  \setlength{\tabcolsep}{10pt}
-  \begin{tabular}{lccc}
-    \toprule
-    \textbf{Compressor} & \textbf{enwik9} & \textbf{ImageNet} & \textbf{LibriSpeech} \\
-    \midrule
-    gzip            & 48.1 & 68.6 & 38.5 \\
-    PNG             & 80.6 & 61.7 & 37.6 \\
-    FLAC            & 88.9 & 60.9 & 30.3 \\
-    \midrule
-    Chinchilla 1B   & 11.3 & 62.2 & 24.9 \\
-    Chinchilla 7B   & 10.2 & 54.7 & 23.6 \\
-    \rowcolor{mDarkTeal!12}
-    \textbf{Chinchilla 70B} & \textbf{8.3} & \textbf{48.0} & \textbf{21.0} \\
-    \bottomrule
-  \end{tabular}
-
-  \vspace{0.2em}
-  \footnotesize \textbf{\textcolor{mDarkTeal}{Takeaway:}} A text-trained LLM can compress image and audio bytes.
-
-  \vspace{0.1em}
-  \scriptsize 1~GB datasets; 2,048-byte chunks; model weights excluded. Adjusted Chinchilla rates are 211--14,048\% \parencite{deletangLanguageModelingCompression2024}.
-\end{frame}
 
 \begin{frame}[standout]
   \Large Compression ratio is not enough.

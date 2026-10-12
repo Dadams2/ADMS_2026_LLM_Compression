@@ -4,17 +4,93 @@
 
 \section{Conclusion}
 
-\begin{frame}{Key Takeaways}
+\begin{frame}{Future Work}
+  \begin{columns}[T, onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \textbf{Model-side}
+      \begin{itemize}
+        \item Smaller or specialized compressors
+        \item Domain fine-tuning for code, logs, and records
+        \item Speculative or blockwise prediction
+      \end{itemize}
+    \end{column}
+    \hfill
+    \begin{column}{0.48\textwidth}
+      \textbf{System-side}
+      \begin{itemize}
+        \item Native interval-capture APIs
+        \item Lower-overhead stateful scheduling
+        \item CPU-only paths with AVX-512 or other vector extensions
+        \item Decode-aware cost models
+        \item Integration with storage-tier policies
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{Today the Fit Is Cold Database Text}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.46\textwidth}
+      \begin{block}{Plausible now}
+        \begin{itemize}
+          \item archival text and compliance logs
+          \item write once, read rarely
+          \item storage or transfer dominates
+          \item structured domains such as code
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \hfill
+    \begin{column}{0.46\textwidth}
+      \begin{block}{Not competitive now}
+        \begin{itemize}
+          \item hot scans and predicates
+          \item high-throughput ingestion
+          \item frequent updates
+          \item latency-sensitive reads
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+
+  \vspace{0.65em}
+  \begin{tikzpicture}
+    \node[draw=mDarkTeal,very thick,rounded corners=3pt,fill=mDarkTeal!7,
+      minimum width=3.6cm,minimum height=1.15cm,align=center] at (2.0,0)
+      {\Large\bfseries $7.7\times$ text\\[-0.1em]\scriptsize measured ratio};
+    \node[draw=mDarkTeal,very thick,rounded corners=3pt,fill=mDarkTeal!7,
+      minimum width=3.6cm,minimum height=1.15cm,align=center] at (6.0,0)
+      {\Large\bfseries $11.2\times$ code\\[-0.1em]\scriptsize measured ratio};
+    \node[draw=codecBase,very thick,rounded corners=3pt,fill=red!6,
+      minimum width=3.6cm,minimum height=1.15cm,align=center] at (10.0,0)
+      {\Large\bfseries $0.0345$ MB/s\\[-0.1em]\scriptsize optimized encode};
+  \end{tikzpicture}
+  \vfill
+  \tiny Qwen2.5-0.5B, A100; ratios vary by dataset. Throughput value is \texttt{text8} encode only.
+\end{frame}
+
+
+\begin{frame}{Three Lessons for High-Performance LLM Compression}
   \begin{enumerate}
-    \item \textbf{LLMs can compress text very well.} Ratios above $7\times$ on natural language and $11\times$ on code are possible in these experiments.
+    \item \textbf{Measure the operator, not the model.} Generation throughput does not predict score-capture throughput.
 
-    \vspace{0.45em}
-    \item \textbf{The implementation determines the economics.} For a fixed model, throughput varies dramatically with logit access and entropy-coding design.
+    \vspace{0.35em}
+    \item \textbf{Expose the value the consumer needs.} A target interval is cheaper to move than a vocabulary-wide score vector.
 
-    \vspace{0.45em}
-    \item \textbf{Target-interval capture is the strongest optimization.} It turns dense score processing into a constant-size per-token record.
-
-    \vspace{0.45em}
-    \item \textbf{There is still systems headroom.} Current engines are not optimized for score extraction, and CPU SIMD paths remain underexplored.
+    \vspace{0.35em}
+    \item \textbf{Evaluate both directions.} Encoder-only knowledge creates optimizations the decoder cannot share.
   \end{enumerate}
+
+  \vspace{0.7em}
+  \begin{columns}[c,onlytextwidth]
+    \begin{column}{0.72\textwidth}
+      \Large\textbf{Follow-up: Text Compression Through the Looking Glass}\\[0.35em]
+      \normalsize\href{https://utndatasystems.github.io/blog/2026/text-compression/}{utndatasystems.github.io/blog/2026/text-compression/}\\[0.65em]
+    \end{column}
+    \begin{column}{0.24\textwidth}
+      \centering
+      \qrcode[height=2.2cm]{https://utndatasystems.github.io/blog/2026/text-compression/}
+    \end{column}
+  \end{columns}
 \end{frame}

@@ -2,159 +2,25 @@
 %  Section 4: Results
 % ============================================================
 
-\section{Results}
+% \section{Results}
 
-\begin{frame}{Experimental Setup}
+
+
+
+
+\begin{frame}{LLM Ratios Are Strong, But Throughput Is Not}
   \small
-  \begin{tabularx}{\textwidth}{lX}
+  \begin{tabularx}{\textwidth}{Xrrr}
     \toprule
-    \textbf{Dimension} & \textbf{Configuration} \\
+    \textbf{Compressor} & \textbf{Throughput (MiB/s)} & \textbf{Ratio} & \textbf{vs. fastest LLM} \\
     \midrule
-    Model & \texttt{Qwen/Qwen2.5-0.5B} \\
-    Default hardware & Dual AMD EPYC Milan 7313, 512 GB DDR4, NVIDIA A100 40 GB SXM4 \\
-    Datasets & \texttt{text8}, Python code from PyTorrent, Yelp Open Dataset records \\
-    Default operating point & Batch size 256, context length 256, 100 retained tokens \\
-    Metrics & Throughput in uncompressed MB/s; compression ratio as original/compressed size \\
+    FSST8 & 1,750.9 & $2.084\times$ & $13{,}549\times$ faster \\
+    LZ4 & 1,014.7 & $1.831\times$ & $7{,}852\times$ faster \\
+    zstd -3 & 624.7 & $3.061\times$ & $4{,}834\times$ faster \\
+    xz -9e & 57.3 & $3.794\times$ & $443\times$ faster \\
+    \midrule
+    Fastest recorded LLM & 0.1292 & $6.365\times$ & --- \\
+    Standard optimized LLM & 0.0347 & $7.049\times$ & --- \\
     \bottomrule
   \end{tabularx}
-\end{frame}
-
-\begin{frame}{Result 1: Generation Engines Do Not Automatically Win}
-  \small
-  \begin{tabularx}{\textwidth}{llYYY}
-    \toprule
-    \textbf{Engine} & \textbf{Variant} & \textbf{MB/s} & \textbf{Ratio} & \textbf{Speedup} \\
-    \midrule
-    Transformers & + KV cache & \metric{0.0344} & 7.0492 & $1.00\times$ \\
-    Transformers & No KV cache & 0.0030 & 7.0502 & $0.09\times$ \\
-    vLLM & Default & 0.0130 & 7.0304 & $0.37\times$ \\
-    TensorRT-LLM & Batch 256 & 0.0081 & 7.0499 & $0.023\times$ \\
-    TensorRT-LLM & Batch 512 & 0.0065 & 7.9370 & $0.019\times$ \\
-    \bottomrule
-  \end{tabularx}
-
-  \vspace{0.8em}
-  \begin{block}{Takeaway}
-    vLLM and TensorRT-LLM are excellent generation systems, but this workload exposes scheduling, synchronization, and score-capture costs that ordinary serving can hide \parencite{kwonEfficientMemoryManagement2023,Kipf2026WaitingTD}.
-  \end{block}
-\end{frame}
-
-\begin{frame}{The Bottleneck Moves}
-  \centering
-  \includegraphics[width=0.92\textwidth,height=0.72\textheight,keepaspectratio]{figures/tikz/bottleneck_shift.pdf}
-
-  \vspace{0.3em}
-  \small Naive AC made coding the bottleneck; after optimizing it away, the floor is again inference and score extraction.
-\end{frame}
-
-\begin{frame}{Result 2: Target-Interval Capture Dominates}
-  \small
-  \begin{tabularx}{\textwidth}{llYYY}
-    \toprule
-    \textbf{Engine} & \textbf{Configuration} & \textbf{MB/s} & \textbf{Rel. speedup} & \textbf{AC time} \\
-    \midrule
-    Transformers & Baseline AC & 0.0018 & $1.00\times$ & 97.1\% \\
-    Transformers & + O3 & \metric{0.0347} & \metric{$18.96\times$} & \metric{1.0\%} \\
-    Transformers & + O2 + O3 & 0.0345 & $18.84\times$ & 1.0\% \\
-    \midrule
-    vLLM & Baseline AC & 0.0031 & $1.00\times$ & 89.9\% \\
-    vLLM & + O1 & \metric{0.0116} & \metric{$3.43\times$} & 9.2\% \\
-    vLLM & + O3 & 0.0065 & $1.94\times$ & 3.0\% \\
-    \midrule
-    TensorRT-LLM & Baseline AC & 0.0020 & $1.00\times$ & 58.2\% \\
-    TensorRT-LLM & + O3 & \metric{0.0044} & \metric{$2.18\times$} & 0.7\% \\
-    \bottomrule
-  \end{tabularx}
-
-  \vspace{0.45em}
-  \centering
-  \small O3 is strongest when coding and score conversion dominate; current generation engines still leave non-coding overhead.
-\end{frame}
-
-\begin{frame}{Result 3: vLLM Needs Windowing}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.56\textwidth}
-      \includegraphics[width=\textwidth]{\plotsdir/vllm_window_sweep_heatmap.pdf}
-    \end{column}
-    \hfill
-    \begin{column}{0.40\textwidth}
-      \textbf{Takeaway}
-      \begin{itemize}
-        \item One request per token pays too much fixed overhead.
-        \item O1 collects a window of score vectors per call.
-        \item Gains concentrate at small-to-medium batch sizes.
-        \item Window size $w=8$ is a practical operating point.
-      \end{itemize}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-% \begin{frame}{Result 4: Context Length Mostly Buys Ratio}
-%   \small
-%   \begin{tabularx}{0.78\textwidth}{YYYY}
-%     \toprule
-%     \textbf{Context} & \textbf{Retain} & \textbf{MB/s} & \textbf{Ratio} \\
-%     \midrule
-%     32 & 16 & 0.0324 & 6.2288 \\
-%     64 & 32 & 0.0338 & 6.6592 \\
-%     128 & 64 & 0.0339 & 6.9239 \\
-%     \textbf{256} & \textbf{100} & \textbf{0.0337} & \textbf{7.0600} \\
-%     512 & 256 & 0.0349 & 7.1007 \\
-%     \bottomrule
-%   \end{tabularx}
-
-%   \vspace{0.8em}
-%   \begin{itemize}
-%     \item Throughput is nearly flat from context 64 to 512.
-%     \item Compression ratio improves, with diminishing returns after the first few hundred tokens.
-%     \item Context 256 is a memory-efficient default for this setup.
-%   \end{itemize}
-% \end{frame}
-
-\begin{frame}{Result 4: LLM Ratios Are Strong, But Throughput Is Not}
-  \small
-  \begin{tabularx}{\textwidth}{lYYY}
-    \toprule
-    \textbf{Codec / encoding} & \textbf{MB/s} & \textbf{Ratio} & \textbf{Notes} \\
-    \midrule
-    Target interval AC & 0.0349 & \metric{7.1007} & LLM, optimized AC \\
-    Bitpacked ranks & 0.0363 & 2.8735 & Simpler, much worse ratio \\
-    Huffman ranks & 0.0359 & 6.1962 & No throughput advantage \\
-    \midrule
-    LZ4 & \metric{666.66} & 1.83 & CPU baseline \\
-    zstd & \metric{586.70} & 3.06 & CPU baseline \\
-    FSST & 294.11 & 2.08 & DB-centric baseline \\
-    xz -9e & 1.34 & 4.30 & Stronger, slower baseline \\
-    \bottomrule
-  \end{tabularx}
-
-  \vspace{0.5em}
-  \small LLM compression trades orders of magnitude of throughput for substantially higher ratio; pure CPU neural compression with AVX-512 or similar vector extensions is a plausible systems baseline to explore.
-\end{frame}
-
-\begin{frame}{Dataset Sensitivity: Code Compresses Especially Well}
-  \begin{columns}[T, onlytextwidth]
-    \begin{column}{0.50\textwidth}
-      \small
-      \begin{tabularx}{\textwidth}{lYY}
-        \toprule
-        \textbf{Dataset} & \textbf{MB/s} & \textbf{Ratio} \\
-        \midrule
-        \texttt{text8} & 0.005436 & 7.739 \\
-        \texttt{code} & 0.004132 & \metric{11.203} \\
-        \texttt{Yelp} & 0.002490 & 7.028 \\
-        \bottomrule
-      \end{tabularx}
-    \end{column}
-    \hfill
-    \begin{column}{0.44\textwidth}
-      \begin{block}{Why this matters}
-        Domain-structured text can be much more predictable than generic natural language.
-      \end{block}
-      \begin{itemize}
-        \item Logs, code, schemas, and repeated business records are plausible targets.
-        \item Fine-tuned or specialized models may shift the economics further \parencite{finezip}.
-      \end{itemize}
-    \end{column}
-  \end{columns}
 \end{frame}
